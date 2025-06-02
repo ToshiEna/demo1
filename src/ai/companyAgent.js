@@ -119,22 +119,36 @@ class CompanyAgent {
     }
     
     buildResponsePrompt(question, relevantContext, conversationContext) {
-        // Build context from document content
+        // Build context from document content with token limit consideration
         let documentContext = "";
         if (relevantContext && relevantContext.length > 0) {
             documentContext = "関連資料の内容:\n";
+            let totalLength = 0;
+            const maxDocumentContextLength = 2000; // Rough token limit for document context
+            
             relevantContext.forEach((section, index) => {
-                documentContext += `[${section.source}] ${section.content}\n`;
+                const sectionText = `[${section.source}] ${section.content}\n`;
+                if (totalLength + sectionText.length <= maxDocumentContextLength) {
+                    documentContext += sectionText;
+                    totalLength += sectionText.length;
+                }
             });
             documentContext += "\n";
         }
         
-        // Build conversation history
+        // Build conversation history with limit
         let conversationHistory = "";
         if (conversationContext && conversationContext.length > 0) {
             conversationHistory = "過去の会話:\n";
+            const maxConversationLength = 1000; // Rough token limit for conversation context
+            let totalLength = 0;
+            
             conversationContext.forEach(msg => {
-                conversationHistory += `${msg.speaker}: ${msg.content}\n`;
+                const msgText = `${msg.speaker}: ${msg.content}\n`;
+                if (totalLength + msgText.length <= maxConversationLength) {
+                    conversationHistory += msgText;
+                    totalLength += msgText.length;
+                }
             });
             conversationHistory += "\n";
         }
