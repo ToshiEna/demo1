@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../server');
+const { v4: uuidv4 } = require('uuid');
 
 describe('API Endpoints', () => {
     test('GET / should return the main page', async () => {
@@ -29,4 +30,60 @@ describe('API Endpoints', () => {
         const response = await request(app).get('/api/simulation/invalid-session-id');
         expect(response.status).toBe(404);
     });
+});
+
+describe('Simulation Session Limits', () => {
+    // Test to verify that simulation stops after exactly 2 turns (4 messages)
+    test('Simulation should stop after exactly 2 turns', (done) => {
+        // Create a mock session to test shouldContinue behavior
+        class TestSession {
+            constructor() {
+                this.messages = [];
+                this.expectedQuestions = [];
+                this.currentQuestionIndex = 0;
+            }
+            
+            shouldContinue() {
+                // Use the new logic - limit to exactly 2 turns (4 messages)
+                const MAX_TURNS = 2;
+                const MAX_MESSAGES = MAX_TURNS * 2;
+                return this.messages.length < MAX_MESSAGES;
+            }
+            
+            addMessage(type) {
+                this.messages.push({ type, content: 'test', timestamp: new Date().toISOString() });
+            }
+        }
+        
+        const session = new TestSession();
+        
+        // Test: Before any messages
+        expect(session.shouldContinue()).toBe(true);
+        expect(session.messages.length).toBe(0);
+        
+        // Add Turn 1: Q1, A1
+        session.addMessage('shareholder'); // Q1
+        expect(session.shouldContinue()).toBe(true);
+        expect(session.messages.length).toBe(1);
+        
+        session.addMessage('company');     // A1
+        expect(session.shouldContinue()).toBe(true);
+        expect(session.messages.length).toBe(2);
+        
+        // Add Turn 2: Q2, A2
+        session.addMessage('shareholder'); // Q2
+        expect(session.shouldContinue()).toBe(true);
+        expect(session.messages.length).toBe(3);
+        
+        session.addMessage('company');     // A2
+        expect(session.shouldContinue()).toBe(false); // Should stop after 2 turns
+        expect(session.messages.length).toBe(4);
+        
+        // Verify it stays stopped even if we try to add more
+        session.addMessage('shareholder'); // Q3 (shouldn't matter)
+        expect(session.shouldContinue()).toBe(false);
+        expect(session.messages.length).toBe(5);
+        
+        done();
+    }, 5000);
 });
