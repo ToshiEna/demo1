@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>株主総会Q&Aシミュレーター</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>株主総会Q&Aシミュレーションシステム</h1>
+            <p>Shareholder Meeting Q&A Simulation System</p>
+        </header>
+
+        <!-- Document Upload Section -->
+        <section id="upload-section" class="section">
+            <h2>1. IR資料アップロード</h2>
+            <div class="upload-area">
+                <input type="file" id="document-upload" multiple accept=".pdf" style="display: none;">
+                <div class="upload-dropzone" onclick="document.getElementById('document-upload').click()">
+                    <div class="upload-icon">📄</div>
+                    <p>PDF形式のIR資料をドラッグ&ドロップまたはクリックしてアップロード</p>
+                    <small>決算資料、年次報告書など（最大50MB/ファイル）</small>
+                </div>
+                <div id="uploaded-files" class="uploaded-files"></div>
+            </div>
+        </section>
+
+        <!-- Expected Questions Section -->
+        <section id="questions-section" class="section">
+            <h2>2. 想定質問入力（オプション）</h2>
+            <div class="questions-input">
+                <textarea id="expected-questions" 
+                         placeholder="株主から想定される質問を入力してください。複数の質問は改行で区切ってください。&#10;&#10;例：&#10;・今年度の業績が前年比で悪化している理由は？&#10;・新規事業の収益見通しはいかがですか？&#10;・配当政策の変更予定はありますか？"
+                         rows="8"></textarea>
+                <small>入力しない場合は、AI が資料から自動的に質問を生成します</small>
+            </div>
+        </section>
+
+        <!-- Simulation Control Section -->
+        <section id="control-section" class="section">
+            <h2>3. シミュレーション開始</h2>
+            <div class="control-buttons">
+                <button id="start-simulation" class="btn btn-primary" disabled>
+                    Q&Aシミュレーション開始
+                </button>
+                <button id="pause-simulation" class="btn btn-secondary" disabled>
+                    一時停止
+                </button>
+                <button id="next-question" class="btn btn-secondary" disabled>
+                    次の質問へ
+                </button>
+                <button id="end-simulation" class="btn btn-danger" disabled>
+                    終了
+                </button>
+            </div>
+            <div id="simulation-status" class="status-display">
+                まず IR資料をアップロードしてください
+            </div>
+        </section>
+
+        <!-- Chat Interface Section -->
+        <section id="chat-section" class="section" style="display: none;">
+            <h2>4. Q&A シミュレーション</h2>
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+                <div class="chat-controls">
+                    <div class="simulation-info">
+                        <span id="session-id"></span>
+                        <span id="message-count">メッセージ: 0</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Session History Section -->
+        <section id="history-section" class="section">
+            <h2>5. セッション履歴</h2>
+            <div class="session-history">
+                <div id="session-list" class="session-list">
+                    <!-- Past sessions will be listed here -->
+                </div>
+                <button id="load-sessions" class="btn btn-outline">履歴を読み込み</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>処理中...</p>
+        </div>
+    </div>
+
+    <!-- Error modal -->
+    <div id="error-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>エラー</h3>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

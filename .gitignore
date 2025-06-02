@@ -76,7 +76,8 @@ jest_coverage/
 
 # Gatsby files
 .cache/
-public
+# Note: Commented out 'public' as we need our public directory for the web app
+# public
 
 # Storybook build outputs
 .out
