@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>株主総会Q&Aシミュレーションシステム</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>株主総会Q&Aシミュレーションシステム</h1>
+            <p>Shareholder Meeting Q&A Simulation System</p>
+        </header>
+
+        <!-- File Upload Section (FR-1) -->
+        <section id="upload-section" class="section">
+            <h2>1. IR資料のアップロード</h2>
+            <div class="upload-area">
+                <input type="file" id="file-input" accept=".pdf" multiple style="display: none;">
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📄</div>
+                    <p>PDFファイルをドラッグ&ドロップするか、クリックして選択してください</p>
+                    <button type="button" onclick="document.getElementById('file-input').click()">
+                        ファイルを選択
+                    </button>
+                </div>
+                <div id="upload-progress" class="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <p id="progress-text">アップロード中...</p>
+                </div>
+            </div>
+            
+            <div id="uploaded-files" class="uploaded-files">
+                <h3>アップロード済み資料</h3>
+                <div id="files-list"></div>
+            </div>
+        </section>
+
+        <!-- Expected Questions Section (FR-3) -->
+        <section id="questions-section" class="section">
+            <h2>2. 想定質問の入力</h2>
+            <div class="questions-input">
+                <textarea id="expected-questions" 
+                         placeholder="想定される株主からの質問を入力してください。複数ある場合は改行で区切ってください。&#10;&#10;例：&#10;・今期の業績について教えてください&#10;・今後の成長戦略は？&#10;・配当政策について">
+                </textarea>
+                <p class="help-text">※想定質問を入力しない場合、AIが自動的に質問を生成します</p>
+            </div>
+        </section>
+
+        <!-- Simulation Controls (FR-4, FR-5) -->
+        <section id="controls-section" class="section">
+            <h2>3. シミュレーション</h2>
+            <div class="simulation-controls">
+                <button id="start-simulation" class="btn-primary" disabled>
+                    Q&Aシミュレーション開始
+                </button>
+                <button id="pause-simulation" class="btn-secondary" style="display: none;">
+                    一時停止
+                </button>
+                <button id="resume-simulation" class="btn-secondary" style="display: none;">
+                    再開
+                </button>
+                <button id="next-question" class="btn-secondary" style="display: none;">
+                    次の質問へ
+                </button>
+                <button id="end-simulation" class="btn-danger" style="display: none;">
+                    シミュレーション終了
+                </button>
+            </div>
+            <div id="simulation-status" class="status-display">
+                <p>IR資料をアップロードしてください</p>
+            </div>
+        </section>
+
+        <!-- Chat Interface (FR-10) -->
+        <section id="chat-section" class="section" style="display: none;">
+            <h2>4. Q&A対話</h2>
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+                <div class="chat-loading" id="chat-loading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>AIが応答を生成中...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Session History (FR-15) -->
+        <section id="history-section" class="section">
+            <h2>5. 過去のセッション</h2>
+            <div id="session-history">
+                <p>過去のシミュレーションセッションはありません</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
