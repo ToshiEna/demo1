@@ -16,10 +16,19 @@ class CompanyAgent {
             // Generate response prompt
             const responsePrompt = this.buildResponsePrompt(question, relevantContext, conversationContext);
             
-            // For now, generate mock response since we don't have Azure OpenAI configured
-            const response = await this.generateMockResponse(question, relevantContext);
-            
-            return response;
+            // Try to use Azure OpenAI if configured, otherwise use improved mock response
+            if (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT) {
+                try {
+                    const aiResponse = await this.callAzureOpenAI(responsePrompt);
+                    return aiResponse;
+                } catch (error) {
+                    console.warn('Azure OpenAI failed, falling back to mock response:', error.message);
+                    return await this.generateMockResponse(question, relevantContext);
+                }
+            } else {
+                // Use improved mock response that incorporates document content
+                return await this.generateMockResponse(question, relevantContext);
+            }
             
         } catch (error) {
             console.error('Failed to generate response:', error);
@@ -28,15 +37,31 @@ class CompanyAgent {
     }
     
     findRelevantDocumentContent(question) {
-        // Simple keyword-based search for relevant content
+        // Enhanced keyword-based search for relevant content
         const keywords = this.extractKeywords(question);
         const relevantSections = [];
+        
+        // Create expanded keyword map for better semantic matching
+        const keywordExpansions = {
+            '業績': ['売上', '利益', '営業利益', '収益', '収入'],
+            '戦略': ['計画', '方針', '施策', '展開', '推進'],
+            '今後': ['将来', '予定', '予想', '見込み', '目標'],
+            '成長': ['拡大', '増加', '向上', '発展']
+        };
+        
+        // Expand keywords to include related terms
+        const expandedKeywords = [...keywords];
+        keywords.forEach(keyword => {
+            if (keywordExpansions[keyword]) {
+                expandedKeywords.push(...keywordExpansions[keyword]);
+            }
+        });
         
         this.documents.forEach(doc => {
             const sentences = doc.textContent.split(/[。．\n]/).filter(s => s.trim().length > 10);
             
             sentences.forEach(sentence => {
-                const relevanceScore = keywords.reduce((score, keyword) => {
+                const relevanceScore = expandedKeywords.reduce((score, keyword) => {
                     return score + (sentence.includes(keyword) ? 1 : 0);
                 }, 0);
                 
@@ -57,14 +82,32 @@ class CompanyAgent {
     }
     
     extractKeywords(question) {
-        // Simple keyword extraction
-        const commonWords = ['の', 'は', 'が', 'を', 'に', 'で', 'と', 'から', 'まで', 'より', 'について', 'では', 'です', 'ます', 'である', 'する', 'した', 'される', 'いる', 'ある', 'この', 'その', 'あの', 'どの', 'いかが', 'どう', 'なぜ', 'どこ', 'いつ', 'だれ', '何'];
+        // Improved keyword extraction for Japanese text
+        const commonWords = ['の', 'は', 'が', 'を', 'に', 'で', 'と', 'から', 'まで', 'より', 'について', 'では', 'です', 'ます', 'である', 'する', 'した', 'される', 'いる', 'ある', 'この', 'その', 'あの', 'どの', 'いかが', 'どう', 'なぜ', 'どこ', 'いつ', 'だれ', '何', 'てください', 'ください', 'ました', 'でしょうか', 'ですか'];
         
-        return question
-            .replace(/[？?！!。．、，]/g, ' ')
-            .split(/\s+/)
-            .filter(word => word.length > 1 && !commonWords.includes(word))
-            .slice(0, 10); // Take first 10 keywords
+        // Simple approach: extract meaningful character sequences
+        const cleanedQuestion = question.replace(/[？?！!。．、，]/g, '');
+        const keywords = [];
+        
+        // Extract common business terms directly
+        const businessTerms = ['業績', '売上', '売上高', '利益', '営業利益', '戦略', '計画', '成長', 'DX', '配当', '株主還元', 'リスク', '課題', '方針', '今後', '将来'];
+        businessTerms.forEach(term => {
+            if (cleanedQuestion.includes(term)) {
+                keywords.push(term);
+            }
+        });
+        
+        // Also try character-based extraction for other potential keywords
+        // Split by common particles and extract remaining meaningful parts
+        const parts = cleanedQuestion.split(/[のはがをにでとからまでより]/);
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (trimmed.length > 1 && !commonWords.includes(trimmed)) {
+                keywords.push(trimmed);
+            }
+        });
+        
+        return [...new Set(keywords)].slice(0, 10); // Remove duplicates and take first 10
     }
     
     buildConversationContext(messageHistory) {
@@ -76,7 +119,44 @@ class CompanyAgent {
     }
     
     buildResponsePrompt(question, relevantContext, conversationContext) {
+        // Build context from document content
+        let documentContext = "";
+        if (relevantContext && relevantContext.length > 0) {
+            documentContext = "関連資料の内容:\n";
+            relevantContext.forEach((section, index) => {
+                documentContext += `[${section.source}] ${section.content}\n`;
+            });
+            documentContext += "\n";
+        }
+        
+        // Build conversation history
+        let conversationHistory = "";
+        if (conversationContext && conversationContext.length > 0) {
+            conversationHistory = "過去の会話:\n";
+            conversationContext.forEach(msg => {
+                conversationHistory += `${msg.speaker}: ${msg.content}\n`;
+            });
+            conversationHistory += "\n";
+        }
+        
+        // Construct the full prompt for AI
+        const systemPrompt = `あなたは上場企業の経営陣として、株主総会で株主からの質問に誠実かつ建設的に回答してください。
+
+回答の際は以下の点を重視してください:
+1. 提供された関連資料の内容に基づいて回答する
+2. 事実に基づかない情報は含めない
+3. 具体的なデータや情報があれば引用する
+4. 不明な点は素直に認め、後日回答する旨を伝える
+
+${documentContext}${conversationHistory}`;
+
+        const userPrompt = `株主からの質問: ${question}
+
+上記の質問に対して、関連資料の内容を参考にして適切に回答してください。`;
+
         return {
+            systemPrompt,
+            userPrompt,
             question,
             relevantContext,
             conversationContext
@@ -84,29 +164,48 @@ class CompanyAgent {
     }
     
     async generateMockResponse(question, relevantContext) {
-        // Mock implementation - in production, this would call Azure OpenAI
+        // Improved mock implementation that actually uses document content
         
-        // Generate response based on question content and relevant context
         const questionLower = question.toLowerCase();
+        let baseResponse = "";
+        let hasRelevantContent = relevantContext && relevantContext.length > 0;
         
+        // Generate content-aware responses based on question type and available context
         if (questionLower.includes('業績') || questionLower.includes('売上') || questionLower.includes('利益')) {
-            return this.generatePerformanceResponse(relevantContext);
+            baseResponse = this.generatePerformanceResponse(relevantContext);
+        } else if (questionLower.includes('戦略') || questionLower.includes('計画') || questionLower.includes('今後')) {
+            baseResponse = this.generateStrategyResponse(relevantContext);
+        } else if (questionLower.includes('配当') || questionLower.includes('株主還元')) {
+            baseResponse = this.generateDividendResponse(relevantContext);
+        } else if (questionLower.includes('リスク') || questionLower.includes('課題')) {
+            baseResponse = this.generateRiskResponse(relevantContext);
+        } else {
+            baseResponse = this.generateGenericResponse(question, relevantContext);
         }
         
-        if (questionLower.includes('戦略') || questionLower.includes('計画') || questionLower.includes('今後')) {
-            return this.generateStrategyResponse(relevantContext);
+        // If we have relevant document content, enhance the response with specific information
+        if (hasRelevantContent) {
+            const contextualInfo = this.extractContextualInformation(relevantContext, question);
+            if (contextualInfo) {
+                baseResponse += `\n\n${contextualInfo}`;
+            }
         }
         
-        if (questionLower.includes('配当') || questionLower.includes('株主還元')) {
-            return this.generateDividendResponse(relevantContext);
+        return baseResponse;
+    }
+    
+    extractContextualInformation(relevantContext, question) {
+        // Extract and format the most relevant information from document context
+        if (!relevantContext || relevantContext.length === 0) {
+            return null;
         }
         
-        if (questionLower.includes('リスク') || questionLower.includes('課題')) {
-            return this.generateRiskResponse(relevantContext);
-        }
+        const topContext = relevantContext[0]; // Most relevant context
+        const sourceName = topContext.source;
+        const content = topContext.content;
         
-        // Generic response with context
-        return this.generateGenericResponse(question, relevantContext);
+        // Format the contextual information appropriately
+        return `詳細につきましては、${sourceName}において「${content.substring(0, 100)}${content.length > 100 ? '...' : ''}」と記載しており、これに基づいてご説明いたします。`;
     }
     
     generatePerformanceResponse(context) {
@@ -118,8 +217,20 @@ class CompanyAgent {
         
         const baseResponse = responses[Math.floor(Math.random() * responses.length)];
         
+        // Enhance response with specific document content if available
         if (context && context.length > 0) {
-            return baseResponse + `詳細につきましては、${context[0].source}に記載の通りでございます。`;
+            const relevantInfo = context.find(c => 
+                c.content.includes('売上') || 
+                c.content.includes('利益') || 
+                c.content.includes('業績') ||
+                c.content.includes('収益')
+            );
+            
+            if (relevantInfo) {
+                return `${baseResponse} 具体的には、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
+            } else {
+                return `${baseResponse} 詳細につきましては、${context[0].source}をご参照ください。`;
+            }
         }
         
         return baseResponse;
@@ -132,7 +243,25 @@ class CompanyAgent {
             "将来に向けた計画として、市場ニーズの変化に対応した製品・サービスの開発と、効率的な事業運営の確立を図ってまいります。"
         ];
         
-        return responses[Math.floor(Math.random() * responses.length)];
+        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
+        
+        // Enhance response with specific document content if available
+        if (context && context.length > 0) {
+            const relevantInfo = context.find(c => 
+                c.content.includes('戦略') || 
+                c.content.includes('計画') || 
+                c.content.includes('今後') ||
+                c.content.includes('方針')
+            );
+            
+            if (relevantInfo) {
+                return `${baseResponse} 当社の戦略文書にも記載されておりますが、${relevantInfo.content}`;
+            } else {
+                return `${baseResponse} 詳細な戦略については、${context[0].source}にて詳しく説明しております。`;
+            }
+        }
+        
+        return baseResponse;
     }
     
     generateDividendResponse(context) {
@@ -142,7 +271,25 @@ class CompanyAgent {
             "配当に関しては、将来の成長投資とのバランスを考慮しながら、株主の皆様のご期待にお応えできるよう努めてまいります。"
         ];
         
-        return responses[Math.floor(Math.random() * responses.length)];
+        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
+        
+        // Enhance response with specific document content if available
+        if (context && context.length > 0) {
+            const relevantInfo = context.find(c => 
+                c.content.includes('配当') || 
+                c.content.includes('株主還元') || 
+                c.content.includes('配当性向') ||
+                c.content.includes('還元')
+            );
+            
+            if (relevantInfo) {
+                return `${baseResponse} 具体的な配当方針については、${relevantInfo.source}に「${relevantInfo.content}」と明記しております。`;
+            } else {
+                return `${baseResponse} 配当の詳細な方針は${context[0].source}をご確認ください。`;
+            }
+        }
+        
+        return baseResponse;
     }
     
     generateRiskResponse(context) {
@@ -152,7 +299,25 @@ class CompanyAgent {
             "リスク要因については、定期的な見直しと評価を行い、必要に応じて追加的な対策を実施してまいります。"
         ];
         
-        return responses[Math.floor(Math.random() * responses.length)];
+        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
+        
+        // Enhance response with specific document content if available
+        if (context && context.length > 0) {
+            const relevantInfo = context.find(c => 
+                c.content.includes('リスク') || 
+                c.content.includes('課題') || 
+                c.content.includes('対策') ||
+                c.content.includes('リスク要因')
+            );
+            
+            if (relevantInfo) {
+                return `${baseResponse} 当社が認識している具体的なリスクとして、${relevantInfo.source}に記載の通り、${relevantInfo.content}`;
+            } else {
+                return `${baseResponse} リスクの詳細については、${context[0].source}のリスク情報をご参照ください。`;
+            }
+        }
+        
+        return baseResponse;
     }
     
     generateGenericResponse(question, context) {
@@ -165,13 +330,15 @@ class CompanyAgent {
         const baseResponse = responses[Math.floor(Math.random() * responses.length)];
         
         if (context && context.length > 0) {
-            return baseResponse + `なお、詳細は開示資料もご参照ください。`;
+            // Try to find any relevant content that might relate to the question
+            const mostRelevant = context[0];
+            return baseResponse + ` なお、${mostRelevant.source}にも関連する記載がございますので、併せてご参照ください。「${mostRelevant.content.substring(0, 80)}${mostRelevant.content.length > 80 ? '...' : ''}」`;
         }
         
         return baseResponse;
     }
     
-    async callAzureOpenAI(prompt) {
+    async callAzureOpenAI(responsePrompt) {
         // This would be implemented with actual Azure OpenAI API calls
         if (!process.env.AZURE_OPENAI_API_KEY) {
             throw new Error('Azure OpenAI API key not configured');
@@ -184,11 +351,11 @@ class CompanyAgent {
                     messages: [
                         {
                             role: "system",
-                            content: "あなたは上場企業の経営陣です。株主総会で株主からの質問に対して、誠実で建設的な回答をしてください。提供された資料の内容に基づいて回答し、事実に基づかない情報は含めないでください。"
+                            content: responsePrompt.systemPrompt
                         },
                         {
                             role: "user",
-                            content: prompt
+                            content: responsePrompt.userPrompt
                         }
                     ],
                     max_tokens: 300,
