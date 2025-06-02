@@ -84,9 +84,12 @@ class SimulationSession {
     }
     
     shouldContinue() {
-        // Continue if we have more expected questions or if we haven't reached the conversation limit
-        return this.currentQuestionIndex < this.expectedQuestions.length || 
-               (this.expectedQuestions.length === 0 && this.messages.length < 20);
+        // Limit simulation to exactly 2 turns (4 messages: 2 questions + 2 responses)
+        const MAX_TURNS = 2;
+        const MAX_MESSAGES = MAX_TURNS * 2; // Each turn has 1 question + 1 response
+        
+        // Stop after 2 turns regardless of expected questions
+        return this.messages.length < MAX_MESSAGES;
     }
     
     addMessage(message) {
