@@ -33,8 +33,8 @@ describe('API Endpoints', () => {
 });
 
 describe('Simulation Session Limits', () => {
-    // Test to verify that simulation stops after exactly 2 turns (4 messages)
-    test('Simulation should stop after exactly 2 turns', (done) => {
+    // Test to verify that simulation stops after exactly 1 turn (2 messages)
+    test('Simulation should stop after exactly 1 turn', (done) => {
         // Create a mock session to test shouldContinue behavior
         class TestSession {
             constructor() {
@@ -44,8 +44,8 @@ describe('Simulation Session Limits', () => {
             }
             
             shouldContinue() {
-                // Use the new logic - limit to exactly 2 turns (4 messages)
-                const MAX_TURNS = 2;
+                // Use the new logic - limit to exactly 1 turn (2 messages)
+                const MAX_TURNS = 1;
                 const MAX_MESSAGES = MAX_TURNS * 2;
                 return this.messages.length < MAX_MESSAGES;
             }
@@ -67,22 +67,13 @@ describe('Simulation Session Limits', () => {
         expect(session.messages.length).toBe(1);
         
         session.addMessage('company');     // A1
-        expect(session.shouldContinue()).toBe(true);
+        expect(session.shouldContinue()).toBe(false); // Should stop after 1 turn
         expect(session.messages.length).toBe(2);
         
-        // Add Turn 2: Q2, A2
-        session.addMessage('shareholder'); // Q2
-        expect(session.shouldContinue()).toBe(true);
-        expect(session.messages.length).toBe(3);
-        
-        session.addMessage('company');     // A2
-        expect(session.shouldContinue()).toBe(false); // Should stop after 2 turns
-        expect(session.messages.length).toBe(4);
-        
         // Verify it stays stopped even if we try to add more
-        session.addMessage('shareholder'); // Q3 (shouldn't matter)
+        session.addMessage('shareholder'); // Q2 (shouldn't matter)
         expect(session.shouldContinue()).toBe(false);
-        expect(session.messages.length).toBe(5);
+        expect(session.messages.length).toBe(3);
         
         done();
     }, 5000);

@@ -16,24 +16,44 @@ class CompanyAgent {
             // Generate response prompt
             const responsePrompt = this.buildResponsePrompt(question, relevantContext, conversationContext);
             
+            let response = "";
+            
             // Try to use Azure OpenAI if configured, otherwise use improved mock response
             if (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT) {
                 try {
                     const aiResponse = await this.callAzureOpenAI(responsePrompt);
-                    return aiResponse;
+                    response = aiResponse;
                 } catch (error) {
                     console.warn('Azure OpenAI failed, falling back to mock response:', error.message);
-                    return await this.generateMockResponse(question, relevantContext);
+                    response = await this.generateMockResponse(question, relevantContext);
                 }
             } else {
                 // Use improved mock response that incorporates document content
-                return await this.generateMockResponse(question, relevantContext);
+                response = await this.generateMockResponse(question, relevantContext);
             }
+            
+            // Ensure response is within 600-character limit
+            return this.limitResponseLength(response, 600);
             
         } catch (error) {
             console.error('Failed to generate response:', error);
             return "申し訳ございませんが、現在お答えできません。後ほど詳細をご回答させていただきます。";
         }
+    }
+    
+    limitResponseLength(response, maxLength) {
+        if (response.length <= maxLength) {
+            return response;
+        }
+        
+        // Find a good place to cut off the response (end of sentence)
+        const cutoffPoint = response.lastIndexOf('。', maxLength);
+        if (cutoffPoint > maxLength - 50) { // If we can find a sentence end within 50 chars of limit
+            return response.substring(0, cutoffPoint + 1);
+        }
+        
+        // Otherwise, cut at maxLength with ellipsis
+        return response.substring(0, maxLength - 3) + '...';
     }
     
     findRelevantDocumentContent(question) {
@@ -161,6 +181,7 @@ class CompanyAgent {
 2. 事実に基づかない情報は含めない
 3. 具体的なデータや情報があれば引用する
 4. 不明な点は素直に認め、後日回答する旨を伝える
+5. 回答は600文字以内に収めてください
 
 ${documentContext}${conversationHistory}`;
 
