@@ -261,11 +261,17 @@ function addMessageToChat(message) {
             <div class="message-header">
                 <span class="agent-icon">${agentIcon}</span>
                 <span>${agentName}</span>
+                <button class="play-button" onclick="playMessageAudio('${message.id}', '${message.type}', this)" title="音声再生">
+                    🔊
+                </button>
             </div>
             <div class="message-text">${escapeHtml(message.content)}</div>
             <div class="message-time">${new Date(message.timestamp).toLocaleTimeString()}</div>
         </div>
     `;
+    
+    // Store message text for audio playback
+    messageElement.setAttribute('data-message-text', message.content);
     
     chatContainer.appendChild(messageElement);
 }
@@ -426,3 +432,119 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Voice functionality
+let currentAudio = null;
+let voiceServiceAvailable = null;
+
+/**
+ * Check if voice service is available
+ */
+async function checkVoiceServiceStatus() {
+    if (voiceServiceAvailable !== null) {
+        return voiceServiceAvailable;
+    }
+    
+    try {
+        const response = await fetch('/api/voice/status');
+        const result = await response.json();
+        voiceServiceAvailable = result.available;
+        return voiceServiceAvailable;
+    } catch (error) {
+        console.error('Failed to check voice service status:', error);
+        voiceServiceAvailable = false;
+        return false;
+    }
+}
+
+/**
+ * Play audio for a message
+ * @param {string} messageId - Message ID
+ * @param {string} agentType - 'shareholder' or 'company'
+ * @param {HTMLElement} buttonElement - The play button element
+ */
+async function playMessageAudio(messageId, agentType, buttonElement) {
+    try {
+        // Check if voice service is available
+        const isAvailable = await checkVoiceServiceStatus();
+        if (!isAvailable) {
+            showError('音声機能は利用できません。Azure Speech Servicesの設定を確認してください。');
+            return;
+        }
+        
+        // Stop any currently playing audio
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+            // Reset all play buttons
+            document.querySelectorAll('.play-button').forEach(btn => {
+                btn.textContent = '🔊';
+                btn.disabled = false;
+            });
+        }
+        
+        // Get message text from the parent element
+        const messageElement = buttonElement.closest('.message');
+        const messageText = messageElement.getAttribute('data-message-text');
+        
+        if (!messageText) {
+            showError('メッセージテキストが見つかりません。');
+            return;
+        }
+        
+        // Update button state
+        buttonElement.textContent = '⏸️';
+        buttonElement.disabled = true;
+        
+        // Request audio from server
+        const response = await fetch('/api/voice/text-to-speech', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: messageText,
+                agentType: agentType
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '音声生成に失敗しました。');
+        }
+        
+        // Create audio blob and play
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        currentAudio = new Audio(audioUrl);
+        
+        currentAudio.onended = () => {
+            buttonElement.textContent = '🔊';
+            buttonElement.disabled = false;
+            URL.revokeObjectURL(audioUrl);
+            currentAudio = null;
+        };
+        
+        currentAudio.onerror = () => {
+            buttonElement.textContent = '🔊';
+            buttonElement.disabled = false;
+            URL.revokeObjectURL(audioUrl);
+            currentAudio = null;
+            showError('音声の再生に失敗しました。');
+        };
+        
+        await currentAudio.play();
+        
+    } catch (error) {
+        console.error('Audio playback error:', error);
+        buttonElement.textContent = '🔊';
+        buttonElement.disabled = false;
+        showError(error.message || '音声再生エラーが発生しました。');
+    }
+}
+
+// Initialize voice service status check when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    checkVoiceServiceStatus();
+});

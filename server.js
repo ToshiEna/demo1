@@ -42,6 +42,7 @@ const upload = multer({
 const documentHandler = require('./src/server/documentHandler');
 const simulationHandler = require('./src/server/simulationHandler');
 const sessionHandler = require('./src/server/sessionHandler');
+const voiceHandler = require('./src/server/voiceHandler');
 
 // API Routes
 app.post('/api/upload', upload.array('documents', 10), documentHandler.uploadDocuments);
@@ -50,6 +51,10 @@ app.get('/api/simulation/:sessionId', simulationHandler.getSimulation);
 app.post('/api/simulation/:sessionId/message', simulationHandler.sendMessage);
 app.get('/api/sessions', sessionHandler.getSessions);
 app.get('/api/sessions/:sessionId/export', sessionHandler.exportSession);
+
+// Voice API Routes
+app.post('/api/voice/text-to-speech', voiceHandler.textToSpeech);
+app.get('/api/voice/status', voiceHandler.getVoiceStatus);
 
 // Serve main application
 app.get('/', (req, res) => {
@@ -73,10 +78,12 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Shareholder Meeting Q&A Simulator running on port ${port}`);
-  console.log(`Access the application at http://localhost:${port}`);
-});
+// Start server only if not in test environment
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Shareholder Meeting Q&A Simulator running on port ${port}`);
+    console.log(`Access the application at http://localhost:${port}`);
+  });
+}
 
 module.exports = app;

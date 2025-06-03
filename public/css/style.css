@@ -271,6 +271,27 @@ header p {
     margin-bottom: 8px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+}
+
+.play-button {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    margin-left: 8px;
+}
+
+.play-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.play-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .agent-icon {
