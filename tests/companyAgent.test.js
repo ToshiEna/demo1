@@ -72,4 +72,20 @@ describe('CompanyAgent Document Reference', () => {
         expect(typeof response).toBe('string');
         expect(response.length).toBeGreaterThan(20);
     });
+
+    test('should limit response to 600 characters', async () => {
+        const question = '今年度の業績について詳しく教えてください';
+        const response = await agent.generateResponse(question);
+        
+        expect(typeof response).toBe('string');
+        expect(response.length).toBeLessThanOrEqual(600);
+    });
+
+    test('should properly truncate long responses at sentence boundaries', () => {
+        const longResponse = 'これは非常に長い文章です。'.repeat(50); // Creates a very long response
+        const truncated = agent.limitResponseLength(longResponse, 100);
+        
+        expect(truncated.length).toBeLessThanOrEqual(100);
+        expect(typeof truncated).toBe('string');
+    });
 });

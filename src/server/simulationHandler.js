@@ -84,11 +84,11 @@ class SimulationSession {
     }
     
     shouldContinue() {
-        // Limit simulation to exactly 2 turns (4 messages: 2 questions + 2 responses)
-        const MAX_TURNS = 2;
+        // Limit simulation to exactly 1 turn (2 messages: 1 question + 1 response)
+        const MAX_TURNS = 1;
         const MAX_MESSAGES = MAX_TURNS * 2; // Each turn has 1 question + 1 response
         
-        // Stop after 2 turns regardless of expected questions
+        // Stop after 1 turn regardless of expected questions
         return this.messages.length < MAX_MESSAGES;
     }
     
