@@ -1,4 +1,4 @@
-const axios = require('axios');
+const OpenAI = require('openai');
 
 class ShareholderAgent {
     constructor(documents, expectedQuestions) {
@@ -126,37 +126,37 @@ class ShareholderAgent {
     }
     
     async callAzureOpenAI(prompt) {
-        // This would be implemented with actual Azure OpenAI API calls
+        // Implementation using Azure OpenAI library
         if (!process.env.AZURE_OPENAI_API_KEY) {
             throw new Error('Azure OpenAI API key not configured');
         }
         
         try {
-            const response = await axios.post(
-                `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_NAME}/chat/completions?api-version=2023-05-15`,
-                {
-                    messages: [
-                        {
-                            role: "system",
-                            content: "あなたは上場企業の株主です。株主総会で経営陣に質問をする立場として、建設的で適切な質問をしてください。"
-                        },
-                        {
-                            role: "user",
-                            content: prompt
-                        }
-                    ],
-                    max_tokens: 200,
-                    temperature: 0.7
-                },
-                {
-                    headers: {
-                        'api-key': process.env.AZURE_OPENAI_API_KEY,
-                        'Content-Type': 'application/json'
-                    }
+            const client = new OpenAI({
+                apiKey: process.env.AZURE_OPENAI_API_KEY,
+                baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_NAME}`,
+                defaultQuery: { 'api-version': '2023-05-15' },
+                defaultHeaders: {
+                    'api-key': process.env.AZURE_OPENAI_API_KEY,
                 }
-            );
+            });
+
+            const response = await client.chat.completions.create({
+                messages: [
+                    {
+                        role: "system",
+                        content: "あなたは上場企業の株主です。株主総会で経営陣に質問をする立場として、建設的で適切な質問をしてください。"
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                max_tokens: 200,
+                temperature: 0.7
+            });
             
-            return response.data.choices[0].message.content;
+            return response.choices[0].message.content;
         } catch (error) {
             console.error('Azure OpenAI API error:', error);
             throw error;
