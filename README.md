@@ -12,6 +12,10 @@ This system helps listed companies' IR staff and executives prepare for sharehol
 - **AI-Powered Simulation**: Two AI agents simulate realistic Q&A scenarios
   - Shareholder Agent: Generates questions from shareholder perspective
   - Company Agent: Generates responses from management perspective
+- **Voice Playback**: Convert conversations to speech using Azure Speech Services
+  - Distinct voice profiles for shareholder and company agents
+  - Japanese text-to-speech with natural voices
+  - Play button for each message in the chat interface
 - **Real-time Chat Interface**: Interactive chat-style UI for simulation
 - **Session Management**: Save and review past simulation sessions
 - **Document Context**: AI responses based on uploaded IR materials
@@ -22,6 +26,7 @@ This system helps listed companies' IR staff and executives prepare for sharehol
 - **Frontend**: HTML5, CSS3, JavaScript (SPA)
 - **Backend**: Node.js, Express.js
 - **AI Integration**: Azure OpenAI API
+- **Voice Integration**: Azure Speech Services
 - **Document Processing**: PDF text extraction
 - **Real-time Communication**: Socket.IO
 - **Security**: Multi-tenant data isolation
@@ -40,8 +45,31 @@ Create a `.env` file with the following configuration:
 AZURE_OPENAI_API_KEY=your_azure_openai_api_key
 AZURE_OPENAI_ENDPOINT=your_azure_openai_endpoint
 AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
+AZURE_SPEECH_KEY=your_azure_speech_service_key
+AZURE_SPEECH_REGION=your_azure_speech_service_region
 PORT=3000
 ```
+
+### Azure Speech Services Setup (for Voice Functionality)
+
+To enable voice functionality, you need to set up Azure Speech Services:
+
+1. **Create Azure Speech Service Resource**:
+   - Go to [Azure Portal](https://portal.azure.com/)
+   - Create a new "Speech Services" resource
+   - Choose your subscription and resource group
+   - Select a pricing tier (F0 free tier available for testing)
+   - Note down the **Key** and **Region** from the resource overview
+
+2. **Configure Environment Variables**:
+   - `AZURE_SPEECH_KEY`: Your Speech Service key (Key 1 or Key 2)
+   - `AZURE_SPEECH_REGION`: Your Speech Service region (e.g., "eastus", "westus2", "japaneast")
+
+3. **Voice Profiles**:
+   - **Shareholder Agent**: Uses Japanese male voice (ja-JP-KeitaNeural)
+   - **Company Agent**: Uses Japanese female voice (ja-JP-NanamiNeural)
+
+If Azure Speech Services are not configured, the voice functionality will be disabled gracefully, and the system will continue to work without audio playback.
 
 ## Usage
 
@@ -58,7 +86,9 @@ npm run dev
 
 5. Start Q&A simulation
 
-6. Review and export session logs
+6. **Voice Playback**: Click the 🔊 button next to any message to hear it spoken with voice synthesis
+
+7. Review and export session logs
 
 ## Project Structure
 
