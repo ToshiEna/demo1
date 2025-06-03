@@ -1,4 +1,4 @@
-const OpenAI = require('openai');
+const { AzureOpenAI } = require('openai');
 
 class ShareholderAgent {
     constructor(documents, expectedQuestions) {
@@ -132,13 +132,11 @@ class ShareholderAgent {
         }
         
         try {
-            const client = new OpenAI({
+            const client = new AzureOpenAI({
+                endpoint: process.env.AZURE_OPENAI_ENDPOINT,
                 apiKey: process.env.AZURE_OPENAI_API_KEY,
-                baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_NAME}`,
-                defaultQuery: { 'api-version': '2023-05-15' },
-                defaultHeaders: {
-                    'api-key': process.env.AZURE_OPENAI_API_KEY,
-                }
+                deployment: process.env.AZURE_OPENAI_DEPLOYMENT_NAME,
+                apiVersion: "2024-04-01-preview"
             });
 
             const response = await client.chat.completions.create({
@@ -153,7 +151,8 @@ class ShareholderAgent {
                     }
                 ],
                 max_tokens: 200,
-                temperature: 0.7
+                temperature: 0.7,
+                model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME
             });
             
             return response.choices[0].message.content;
