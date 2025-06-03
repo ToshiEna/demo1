@@ -1,4 +1,4 @@
-const OpenAI = require('openai');
+const { AzureOpenAI } = require('openai');
 
 class CompanyAgent {
     constructor(documents) {
@@ -359,13 +359,11 @@ ${documentContext}${conversationHistory}`;
         }
         
         try {
-            const client = new OpenAI({
+            const client = new AzureOpenAI({
+                endpoint: process.env.AZURE_OPENAI_ENDPOINT,
                 apiKey: process.env.AZURE_OPENAI_API_KEY,
-                baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT_NAME}`,
-                defaultQuery: { 'api-version': '2023-05-15' },
-                defaultHeaders: {
-                    'api-key': process.env.AZURE_OPENAI_API_KEY,
-                }
+                deployment: process.env.AZURE_OPENAI_DEPLOYMENT_NAME,
+                apiVersion: "2024-04-01-preview"
             });
 
             const response = await client.chat.completions.create({
@@ -380,7 +378,8 @@ ${documentContext}${conversationHistory}`;
                     }
                 ],
                 max_tokens: 300,
-                temperature: 0.3
+                temperature: 0.3,
+                model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME
             });
             
             return response.choices[0].message.content;
