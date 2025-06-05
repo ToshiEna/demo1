@@ -1,11 +1,48 @@
 const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
 const { v4: uuidv4 } = require('uuid');
 const { extractDocumentTopics } = require('../utils/helpers');
 
 // Store document metadata in memory (in production, use a database)
 const documentsStore = new Map();
+
+// Function to extract text content from different file types
+async function extractTextFromFile(filePath, mimeType) {
+    try {
+        switch (mimeType) {
+            case 'application/pdf':
+                const pdfBuffer = fs.readFileSync(filePath);
+                const pdfData = await pdfParse(pdfBuffer);
+                return {
+                    text: pdfData.text,
+                    pageCount: pdfData.numpages
+                };
+                
+            case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': // .docx
+            case 'application/msword': // .doc
+                const wordBuffer = fs.readFileSync(filePath);
+                const wordResult = await mammoth.extractRawText({ buffer: wordBuffer });
+                return {
+                    text: wordResult.value,
+                    pageCount: null // Word documents don't have a straightforward page count
+                };
+                
+            case 'text/plain': // .txt
+                const textContent = fs.readFileSync(filePath, 'utf8');
+                return {
+                    text: textContent,
+                    pageCount: null // Text files don't have pages
+                };
+                
+            default:
+                throw new Error(`Unsupported file type: ${mimeType}`);
+        }
+    } catch (error) {
+        throw new Error(`Failed to extract text from file: ${error.message}`);
+    }
+}
 
 exports.uploadDocuments = async (req, res) => {
     try {
@@ -17,12 +54,11 @@ exports.uploadDocuments = async (req, res) => {
         
         for (const file of req.files) {
             try {
-                // Extract text from PDF
-                const pdfBuffer = fs.readFileSync(file.path);
-                const pdfData = await pdfParse(pdfBuffer);
+                // Extract text from document based on file type
+                const extractedData = await extractTextFromFile(file.path, file.mimetype);
                 
                 // Extract key topics from document content
-                const topics = extractDocumentTopics(pdfData.text);
+                const topics = extractDocumentTopics(extractedData.text);
                 
                 const fileMetadata = {
                     id: uuidv4(),
@@ -32,8 +68,8 @@ exports.uploadDocuments = async (req, res) => {
                     size: file.size,
                     mimeType: file.mimetype,
                     uploadedAt: new Date().toISOString(),
-                    textContent: pdfData.text,
-                    pageCount: pdfData.numpages,
+                    textContent: extractedData.text,
+                    pageCount: extractedData.pageCount,
                     topics: topics
                 };
                 
@@ -157,3 +193,6 @@ exports.getAllDocumentsForSelection = async (req, res) => {
         res.status(500).json({ error: 'Failed to retrieve documents' });
     }
 };
+
+// Export the text extraction function for testing
+exports.extractTextFromFile = extractTextFromFile;
