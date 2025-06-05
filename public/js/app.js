@@ -40,6 +40,9 @@ function setupEventListeners() {
     document.getElementById('select-all-faqs').addEventListener('click', selectAllFAQs);
     document.getElementById('deselect-all-faqs').addEventListener('click', deselectAllFAQs);
     document.getElementById('regenerate-faqs').addEventListener('click', regenerateFAQs);
+    
+    // Existing documents
+    document.getElementById('load-existing-docs').addEventListener('click', loadExistingDocuments);
 }
 
 function setupFileUpload() {
@@ -80,8 +83,33 @@ async function uploadFiles(files) {
     showLoading(true);
     
     try {
-        const formData = new FormData();
+        // Check for duplicate files before uploading
+        const duplicateFiles = [];
+        const filesToUpload = [];
+        
         files.forEach(file => {
+            const isDuplicate = uploadedDocuments.some(uploaded => uploaded.originalName === file.name);
+            if (isDuplicate) {
+                duplicateFiles.push(file.name);
+            } else {
+                filesToUpload.push(file);
+            }
+        });
+        
+        if (duplicateFiles.length > 0) {
+            showError(`以下のファイルは既にアップロード済みです: ${duplicateFiles.join(', ')}`);
+            if (filesToUpload.length === 0) {
+                return; // No files to upload
+            }
+        }
+        
+        if (filesToUpload.length === 0) {
+            showError('アップロードする新しいファイルがありません。');
+            return;
+        }
+        
+        const formData = new FormData();
+        filesToUpload.forEach(file => {
             formData.append('documents', file);
         });
         
@@ -100,7 +128,12 @@ async function uploadFiles(files) {
             await generateFAQs();
             
             validateInput();
-            showSuccess(`${files.length}件のファイルがアップロードされました。`);
+            
+            let message = `${filesToUpload.length}件のファイルがアップロードされました。`;
+            if (duplicateFiles.length > 0) {
+                message += ` (${duplicateFiles.length}件の重複ファイルをスキップしました)`;
+            }
+            showSuccess(message);
         } else {
             throw new Error(result.error || 'アップロードに失敗しました。');
         }
@@ -119,12 +152,24 @@ function updateUploadedFilesList() {
     uploadedDocuments.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
+        
+        // Generate topics display
+        const topicsHtml = file.topics && file.topics.length > 0 
+            ? `<div class="file-topics">
+                 <strong>主要トピックス:</strong>
+                 <ul>
+                   ${file.topics.map(topic => `<li>${topic.substring(0, 100)}${topic.length > 100 ? '...' : ''}</li>`).join('')}
+                 </ul>
+               </div>`
+            : '<div class="file-topics"><em>トピックスが見つかりませんでした</em></div>';
+        
         fileItem.innerHTML = `
             <div class="file-info">
                 <span class="file-icon">📄</span>
                 <div>
                     <div>${file.originalName}</div>
                     <small>${formatFileSize(file.size)} | ${new Date(file.uploadedAt).toLocaleString()}</small>
+                    ${topicsHtml}
                 </div>
             </div>
             <button class="file-remove" onclick="removeFile(${index})">削除</button>
@@ -690,3 +735,115 @@ async function playMessageAudio(messageId, agentType, buttonElement) {
 document.addEventListener('DOMContentLoaded', () => {
     checkVoiceServiceStatus();
 });
+
+// Existing Documents Management
+let existingDocuments = [];
+
+async function loadExistingDocuments() {
+    try {
+        showLoading(true, '既存資料を読み込み中...');
+        
+        const response = await fetch('/api/documents');
+        const result = await response.json();
+        
+        if (response.ok) {
+            existingDocuments = result.documents;
+            displayExistingDocuments();
+            
+            const container = document.getElementById('existing-documents');
+            container.style.display = 'block';
+            
+            document.getElementById('load-existing-docs').textContent = '既存資料を隠す';
+            document.getElementById('load-existing-docs').onclick = hideExistingDocuments;
+            
+            showSuccess(`${result.documents.length}件の既存資料が見つかりました。`);
+        } else {
+            throw new Error(result.error || '既存資料の読み込みに失敗しました。');
+        }
+    } catch (error) {
+        console.error('Load existing documents error:', error);
+        showError(error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+function hideExistingDocuments() {
+    const container = document.getElementById('existing-documents');
+    container.style.display = 'none';
+    
+    document.getElementById('load-existing-docs').textContent = '既存資料を表示';
+    document.getElementById('load-existing-docs').onclick = loadExistingDocuments;
+}
+
+function displayExistingDocuments() {
+    const container = document.getElementById('existing-documents');
+    container.innerHTML = '';
+    
+    if (existingDocuments.length === 0) {
+        container.innerHTML = '<p>既存の資料がありません。</p>';
+        return;
+    }
+    
+    existingDocuments.forEach(doc => {
+        // Check if document is already selected
+        const isSelected = uploadedDocuments.some(uploaded => uploaded.id === doc.id);
+        
+        const docItem = document.createElement('div');
+        docItem.className = `existing-doc-item ${isSelected ? 'selected' : ''}`;
+        
+        // Generate topics display for existing documents
+        const topicsDisplay = doc.topics && doc.topics.length > 0 
+            ? `<div class="existing-doc-topics">
+                 トピックス: ${doc.topics.slice(0, 2).map(t => t.substring(0, 50)).join(', ')}${doc.topics.length > 2 ? '...' : ''}
+               </div>`
+            : '<div class="existing-doc-topics">トピックス: なし</div>';
+        
+        docItem.innerHTML = `
+            <input type="checkbox" class="existing-doc-select" 
+                   ${isSelected ? 'checked disabled' : ''} 
+                   onchange="toggleExistingDocumentSelection('${doc.id}', this)">
+            <div class="existing-doc-info">
+                <div><strong>${doc.originalName}</strong></div>
+                <small>${formatFileSize(doc.size)} | ${new Date(doc.uploadedAt).toLocaleString()}</small>
+                ${topicsDisplay}
+            </div>
+        `;
+        
+        container.appendChild(docItem);
+    });
+}
+
+function toggleExistingDocumentSelection(docId, checkboxElement) {
+    const doc = existingDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    
+    if (checkboxElement.checked) {
+        // Add to uploaded documents if not already there
+        const alreadyExists = uploadedDocuments.some(uploaded => uploaded.id === doc.id);
+        if (!alreadyExists) {
+            uploadedDocuments.push(doc);
+            updateUploadedFilesList();
+            validateInput();
+            
+            // Generate FAQs if this is the first document
+            if (uploadedDocuments.length === 1) {
+                generateFAQs();
+            }
+            
+            showSuccess(`${doc.originalName} を選択しました。`);
+        }
+    } else {
+        // Remove from uploaded documents
+        const index = uploadedDocuments.findIndex(uploaded => uploaded.id === doc.id);
+        if (index > -1) {
+            uploadedDocuments.splice(index, 1);
+            updateUploadedFilesList();
+            validateInput();
+            showSuccess(`${doc.originalName} の選択を解除しました。`);
+        }
+    }
+    
+    // Update the existing documents display to reflect changes
+    displayExistingDocuments();
+}
