@@ -1,6 +1,7 @@
 // Global variables
 let currentSessionId = null;
 let uploadedDocuments = [];
+let generatedFAQs = [];
 let isSimulationActive = false;
 let messageCount = 0;
 
@@ -34,6 +35,11 @@ function setupEventListeners() {
     
     // Expected questions input
     document.getElementById('expected-questions').addEventListener('input', validateInput);
+    
+    // FAQ controls
+    document.getElementById('select-all-faqs').addEventListener('click', selectAllFAQs);
+    document.getElementById('deselect-all-faqs').addEventListener('click', deselectAllFAQs);
+    document.getElementById('regenerate-faqs').addEventListener('click', regenerateFAQs);
 }
 
 function setupFileUpload() {
@@ -89,6 +95,10 @@ async function uploadFiles(files) {
         if (response.ok) {
             uploadedDocuments = [...uploadedDocuments, ...result.files];
             updateUploadedFilesList();
+            
+            // Generate FAQs from uploaded documents
+            await generateFAQs();
+            
             validateInput();
             showSuccess(`${files.length}件のファイルがアップロードされました。`);
         } else {
@@ -142,6 +152,113 @@ function validateInput() {
     }
 }
 
+// FAQ Management Functions
+async function generateFAQs() {
+    try {
+        showLoading(true, 'FAQ質問を生成中...');
+        
+        const documentIds = uploadedDocuments.map(doc => doc.id);
+        
+        const response = await fetch('/api/documents/generate-faq', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                documentIds: documentIds
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            generatedFAQs = result.faqs;
+            displayFAQs();
+            document.getElementById('faq-section').style.display = 'block';
+            showSuccess(`${result.faqs.length}個の質問を自動生成しました。`);
+        } else {
+            throw new Error(result.error || 'FAQ生成に失敗しました。');
+        }
+    } catch (error) {
+        console.error('FAQ generation error:', error);
+        showError('FAQ生成中にエラーが発生しました: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+function displayFAQs() {
+    const tbody = document.getElementById('faq-table-body');
+    tbody.innerHTML = '';
+    
+    generatedFAQs.forEach(faq => {
+        const row = document.createElement('tr');
+        row.dataset.faqId = faq.id;
+        
+        if (faq.selected) {
+            row.classList.add('selected');
+        }
+        
+        row.innerHTML = `
+            <td>
+                <input type="checkbox" class="faq-checkbox" ${faq.selected ? 'checked' : ''} 
+                       onchange="toggleFAQSelection(${faq.id})">
+            </td>
+            <td class="faq-number">${faq.id}</td>
+            <td class="faq-question">${faq.question}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    updateSelectedCount();
+}
+
+function toggleFAQSelection(faqId) {
+    const faq = generatedFAQs.find(f => f.id === faqId);
+    if (faq) {
+        faq.selected = !faq.selected;
+        
+        // Update UI
+        const row = document.querySelector(`tr[data-faq-id="${faqId}"]`);
+        if (faq.selected) {
+            row.classList.add('selected');
+        } else {
+            row.classList.remove('selected');
+        }
+        
+        updateSelectedCount();
+    }
+}
+
+function selectAllFAQs() {
+    generatedFAQs.forEach(faq => faq.selected = true);
+    displayFAQs();
+}
+
+function deselectAllFAQs() {
+    generatedFAQs.forEach(faq => faq.selected = false);
+    displayFAQs();
+}
+
+async function regenerateFAQs() {
+    if (uploadedDocuments.length === 0) {
+        showError('FAQ再生成するには、まず資料をアップロードしてください。');
+        return;
+    }
+    
+    await generateFAQs();
+}
+
+function updateSelectedCount() {
+    const selectedCount = generatedFAQs.filter(faq => faq.selected).length;
+    document.getElementById('selected-faq-count').textContent = selectedCount;
+}
+
+function getSelectedFAQs() {
+    return generatedFAQs.filter(faq => faq.selected).map(faq => faq.question);
+}
+
 async function startSimulation() {
     if (uploadedDocuments.length === 0) {
         showError('IR資料をアップロードしてからシミュレーションを開始してください。');
@@ -151,7 +268,26 @@ async function startSimulation() {
     showLoading(true);
     
     try {
-        const expectedQuestions = document.getElementById('expected-questions').value.trim();
+        // Get questions from FAQ selection or manual input
+        const selectedFAQs = getSelectedFAQs();
+        const manualQuestions = document.getElementById('expected-questions').value.trim();
+        
+        let questionsToUse = [];
+        
+        if (selectedFAQs.length > 0) {
+            // Use selected FAQs as priority
+            questionsToUse = selectedFAQs;
+            
+            // Add manual questions if any
+            if (manualQuestions) {
+                const additionalQuestions = manualQuestions.split('\n').filter(q => q.trim());
+                questionsToUse = [...questionsToUse, ...additionalQuestions];
+            }
+        } else if (manualQuestions) {
+            // Use manual questions only
+            questionsToUse = manualQuestions.split('\n').filter(q => q.trim());
+        }
+        // If no questions are provided, the AI will auto-generate during simulation
         
         const response = await fetch('/api/simulation/start', {
             method: 'POST',
@@ -160,7 +296,7 @@ async function startSimulation() {
             },
             body: JSON.stringify({
                 documents: uploadedDocuments.map(doc => doc.filename),
-                expectedQuestions: expectedQuestions ? expectedQuestions.split('\n').filter(q => q.trim()) : []
+                expectedQuestions: questionsToUse
             })
         });
         
@@ -396,8 +532,14 @@ function updateSimulationStatus(message, type = '') {
     statusElement.className = `status-display ${type}`;
 }
 
-function showLoading(show) {
-    document.getElementById('loading-overlay').style.display = show ? 'block' : 'none';
+function showLoading(show, message = '処理中...') {
+    const overlay = document.getElementById('loading-overlay');
+    if (show) {
+        overlay.querySelector('p').textContent = message;
+        overlay.style.display = 'block';
+    } else {
+        overlay.style.display = 'none';
+    }
 }
 
 function showError(message) {

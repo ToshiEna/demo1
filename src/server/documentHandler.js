@@ -89,3 +89,42 @@ exports.getDocumentsByFilenames = (filenames) => {
     }
     return documents;
 };
+
+exports.generateFAQs = async (req, res) => {
+    try {
+        const { documentIds } = req.body;
+        
+        if (!documentIds || documentIds.length === 0) {
+            return res.status(400).json({ error: 'No document IDs provided' });
+        }
+        
+        // Get documents
+        const documents = [];
+        for (const id of documentIds) {
+            const doc = documentsStore.get(id);
+            if (doc) {
+                documents.push(doc);
+            }
+        }
+        
+        if (documents.length === 0) {
+            return res.status(400).json({ error: 'No valid documents found' });
+        }
+        
+        // Import ShareholderAgent to generate FAQs
+        const ShareholderAgent = require('../ai/shareholderAgent');
+        
+        // Generate FAQs from document content
+        const faqs = ShareholderAgent.generateFAQsFromDocuments(documents);
+        
+        res.json({
+            message: `Successfully generated ${faqs.length} FAQ questions`,
+            faqs: faqs,
+            documentCount: documents.length
+        });
+        
+    } catch (error) {
+        console.error('FAQ generation error:', error);
+        res.status(500).json({ error: 'Failed to generate FAQs' });
+    }
+};

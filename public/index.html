@@ -27,9 +27,39 @@
             </div>
         </section>
 
+        <!-- Generated FAQ Section -->
+        <section id="faq-section" class="section" style="display: none;">
+            <h2>2. 自動生成された質問一覧</h2>
+            <div class="faq-container">
+                <p class="faq-description">アップロードされた資料から株主の目線で想定される質問を自動生成しました。シミュレーションで使用したい質問を選択してください。</p>
+                <div class="faq-table-container">
+                    <table id="faq-table" class="faq-table">
+                        <thead>
+                            <tr>
+                                <th width="60">選択</th>
+                                <th width="60">番号</th>
+                                <th>質問内容</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faq-table-body">
+                            <!-- FAQ questions will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="faq-controls">
+                    <button id="select-all-faqs" class="btn btn-outline">全て選択</button>
+                    <button id="deselect-all-faqs" class="btn btn-outline">全て解除</button>
+                    <button id="regenerate-faqs" class="btn btn-outline">質問を再生成</button>
+                </div>
+                <div class="selected-count">
+                    選択中: <span id="selected-faq-count">0</span>件
+                </div>
+            </div>
+        </section>
+
         <!-- Expected Questions Section -->
         <section id="questions-section" class="section">
-            <h2>2. 想定質問入力（オプション）</h2>
+            <h2>3. 想定質問入力（オプション）</h2>
             <div class="questions-input">
                 <textarea id="expected-questions" 
                          placeholder="株主から想定される質問を入力してください。複数の質問は改行で区切ってください。&#10;&#10;例：&#10;・今年度の業績が前年比で悪化している理由は？&#10;・新規事業の収益見通しはいかがですか？&#10;・配当政策の変更予定はありますか？"
@@ -40,7 +70,7 @@
 
         <!-- Simulation Control Section -->
         <section id="control-section" class="section">
-            <h2>3. シミュレーション開始</h2>
+            <h2>4. シミュレーション開始</h2>
             <div class="control-buttons">
                 <button id="start-simulation" class="btn btn-primary" disabled>
                     Q&Aシミュレーション開始
@@ -62,7 +92,7 @@
 
         <!-- Chat Interface Section -->
         <section id="chat-section" class="section" style="display: none;">
-            <h2>4. Q&A シミュレーション</h2>
+            <h2>5. Q&A シミュレーション</h2>
             <div class="chat-container">
                 <div id="chat-messages" class="chat-messages">
                     <!-- Messages will be dynamically added here -->
@@ -78,7 +108,7 @@
 
         <!-- Session History Section -->
         <section id="history-section" class="section">
-            <h2>5. セッション履歴</h2>
+            <h2>6. セッション履歴</h2>
             <div class="session-history">
                 <div id="session-list" class="session-list">
                     <!-- Past sessions will be listed here -->
