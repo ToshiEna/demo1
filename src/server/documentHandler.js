@@ -8,15 +8,67 @@ const { extractDocumentTopics } = require('../utils/helpers');
 // Store document metadata in memory (in production, use a database)
 const documentsStore = new Map();
 
+// Function to validate and clean text content for proper encoding
+function validateAndCleanText(text) {
+    if (!text) return '';
+    
+    // Check for garbled characters (replacement character)
+    const hasGarbledChars = /�/.test(text);
+    
+    if (hasGarbledChars) {
+        console.warn('Detected garbled characters in extracted text. Text may have encoding issues.');
+        // Remove lines with garbled characters to prevent corrupted output
+        const lines = text.split('\n');
+        const cleanLines = lines.filter(line => !/�/.test(line));
+        return cleanLines.join('\n');
+    }
+    
+    return text;
+}
+
+// Custom page render function for PDF with better encoding handling
+function renderPageWithEncoding(pageData) {
+    let renderOptions = {
+        // Enable whitespace normalization to help with encoding issues
+        normalizeWhitespace: true,
+        // Disable combining text items to preserve character integrity
+        disableCombineTextItems: true
+    };
+
+    return pageData.getTextContent(renderOptions)
+        .then(function(textContent) {
+            let lastY, text = '';
+            for (let item of textContent.items) {
+                // Validate each text item for encoding issues
+                const cleanStr = validateAndCleanText(item.str);
+                
+                if (lastY == item.transform[5] || !lastY) {
+                    text += cleanStr;
+                } else {
+                    text += '\n' + cleanStr;
+                }    
+                lastY = item.transform[5];
+            }
+            return text;
+        });
+}
+
 // Function to extract text content from different file types
 async function extractTextFromFile(filePath, mimeType) {
     try {
         switch (mimeType) {
             case 'application/pdf':
                 const pdfBuffer = fs.readFileSync(filePath);
-                const pdfData = await pdfParse(pdfBuffer);
+                // Use custom page renderer with better encoding handling
+                const pdfOptions = {
+                    pagerender: renderPageWithEncoding,
+                    max: 0, // Process all pages
+                    version: 'v1.10.100' // Use stable version
+                };
+                const pdfData = await pdfParse(pdfBuffer, pdfOptions);
+                const cleanedText = validateAndCleanText(pdfData.text);
                 return {
-                    text: pdfData.text,
+                    text: cleanedText,
                     pageCount: pdfData.numpages
                 };
                 
@@ -24,15 +76,17 @@ async function extractTextFromFile(filePath, mimeType) {
             case 'application/msword': // .doc
                 const wordBuffer = fs.readFileSync(filePath);
                 const wordResult = await mammoth.extractRawText({ buffer: wordBuffer });
+                const cleanedWordText = validateAndCleanText(wordResult.value);
                 return {
-                    text: wordResult.value,
+                    text: cleanedWordText,
                     pageCount: null // Word documents don't have a straightforward page count
                 };
                 
             case 'text/plain': // .txt
                 const textContent = fs.readFileSync(filePath, 'utf8');
+                const cleanedTextContent = validateAndCleanText(textContent);
                 return {
-                    text: textContent,
+                    text: cleanedTextContent,
                     pageCount: null // Text files don't have pages
                 };
                 

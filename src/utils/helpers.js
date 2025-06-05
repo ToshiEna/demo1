@@ -22,7 +22,28 @@ function extractDocumentTopics(textContent, maxTopics = 5) {
     // Extract sentences and score them based on keyword presence and position
     const sentences = textContent.split(/[。．\n]/)
         .map(s => s.trim())
-        .filter(s => s.length > 20 && s.length < 200); // Filter reasonable length sentences
+        .filter(s => s.length > 5) // Basic minimum length filter
+        .filter(s => {
+            // Skip sentences that are predominantly garbled characters
+            const garbledCharCount = (s.match(/�/g) || []).length;
+            const totalCharCount = s.length;
+            
+            // If the sentence has garbled characters, be more strict
+            if (garbledCharCount > 0) {
+                // If more than 15% of characters are garbled, skip this sentence
+                const garbledRatio = garbledCharCount / totalCharCount;
+                if (garbledRatio > 0.15) {
+                    return false;
+                }
+                
+                // For sentences with some garbled chars, require them to be longer and have Japanese characters
+                const hasValidJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]{3,}/.test(s);
+                return s.length > 30 && hasValidJapanese;
+            }
+            
+            // For clean sentences, apply normal length filtering
+            return s.length > 10 && s.length < 200;
+        });
     
     const scoredSentences = sentences.map(sentence => {
         let score = 0;
@@ -51,7 +72,7 @@ function extractDocumentTopics(textContent, maxTopics = 5) {
         };
     });
     
-    // Return top scored sentences as topics
+    // Return top scored sentences as topics, excluding heavily garbled content
     return scoredSentences
         .filter(item => item.score > 0)
         .sort((a, b) => b.score - a.score)
