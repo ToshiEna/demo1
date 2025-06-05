@@ -51,7 +51,7 @@ describe('CompanyAgent Document Reference', () => {
         
         expect(prompt).toHaveProperty('systemPrompt');
         expect(prompt).toHaveProperty('userPrompt');
-        expect(prompt.systemPrompt).toContain('関連資料の内容');
+        expect(prompt.systemPrompt).toContain('アップロード資料の内容');
         expect(prompt.userPrompt).toContain(question);
     });
 

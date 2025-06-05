@@ -43,11 +43,11 @@ class ShareholderAgent {
     }
     
     buildDocumentContext() {
-        // Extract key information from documents
+        // Extract full document information for AI processing
         const context = this.documents.map(doc => {
             return {
                 name: doc.originalName,
-                content: doc.textContent.substring(0, 2000) // First 2000 characters
+                content: doc.textContent // Full content instead of substring
             };
         });
         
@@ -87,42 +87,93 @@ class ShareholderAgent {
     }
     
     async generateMockQuestion(questionPrompt, messageHistory) {
-        // Mock implementation - in production, this would call Azure OpenAI
+        // Enhanced question generation based on full document content
         
         if (questionPrompt.type === 'expected' && questionPrompt.expectedQuestion) {
             // Use expected question with some variation
             return questionPrompt.expectedQuestion.replace(/^[・\-\*]\s*/, '');
         }
         
-        if (questionPrompt.type === 'initial') {
-            // Generate initial question based on document content
-            const sampleInitialQuestions = [
-                "今期の業績についてご説明いただけますか？",
-                "今年度の主要な成果と課題について教えてください。",
-                "決算資料を拝見しましたが、売上高の変動要因は何でしょうか？",
-                "今後の事業戦略についてお聞かせください。"
-            ];
-            return sampleInitialQuestions[Math.floor(Math.random() * sampleInitialQuestions.length)];
-        }
-        
-        if (questionPrompt.type === 'followup') {
-            // Generate follow-up questions
-            const lastCompanyMessage = messageHistory.filter(m => m.type === 'company').slice(-1)[0];
-            
-            if (lastCompanyMessage) {
-                const sampleFollowUps = [
-                    "その点についてもう少し詳しく教えていただけますか？",
-                    "具体的な数値や目標があれば教えてください。",
-                    "それは株主にとってどのような影響がありますか？",
-                    "今後の見通しはいかがでしょうか？",
-                    "他社との比較ではどのような状況でしょうか？"
-                ];
-                return sampleFollowUps[Math.floor(Math.random() * sampleFollowUps.length)];
-            }
+        // For other types, generate questions based on document content
+        if (questionPrompt.documentContext && questionPrompt.documentContext.length > 0) {
+            // Use document content to generate contextual questions
+            return this.generateDocumentBasedQuestion(questionPrompt, messageHistory);
         }
         
         // Fallback
         return "その他にご質問させていただきたい点がございます。";
+    }
+    
+    generateDocumentBasedQuestion(questionPrompt, messageHistory) {
+        // Generate questions based on document content analysis
+        const documentContent = questionPrompt.documentContext
+            .map(doc => doc.content)
+            .join('\n');
+        
+        if (questionPrompt.type === 'initial') {
+            // Generate initial question based on document content keywords
+            return this.generateInitialQuestionFromContent(documentContent);
+        } else if (questionPrompt.type === 'followup') {
+            // Generate follow-up question based on conversation and document content
+            return this.generateFollowUpQuestionFromContent(documentContent, messageHistory);
+        }
+        
+        return "資料の内容についてご質問がございます。";
+    }
+    
+    generateInitialQuestionFromContent(documentContent) {
+        const contentLower = documentContent.toLowerCase();
+        
+        // Analyze document content to generate relevant initial questions
+        if (contentLower.includes('売上') || contentLower.includes('業績') || contentLower.includes('利益')) {
+            return "今期の業績について詳しくご説明いただけますでしょうか？";
+        } else if (contentLower.includes('戦略') || contentLower.includes('計画') || contentLower.includes('将来')) {
+            return "今後の事業戦略についてお聞かせください。";
+        } else if (contentLower.includes('配当') || contentLower.includes('株主還元')) {
+            return "株主還元策についてご説明いただけますか？";
+        } else if (contentLower.includes('リスク') || contentLower.includes('課題')) {
+            return "現在の主要なリスクと対策についてお聞かせください。";
+        } else if (contentLower.includes('投資') || contentLower.includes('設備') || contentLower.includes('開発')) {
+            return "設備投資や研究開発の計画について教えてください。";
+        } else {
+            return "アップロードされた資料の内容について詳しくご説明いただけますでしょうか？";
+        }
+    }
+    
+    generateFollowUpQuestionFromContent(documentContent, messageHistory) {
+        const lastCompanyMessage = messageHistory.filter(m => m.type === 'company').slice(-1)[0];
+        const contentLower = documentContent.toLowerCase();
+        
+        if (lastCompanyMessage) {
+            const lastResponseLower = lastCompanyMessage.content.toLowerCase();
+            
+            // Generate contextual follow-ups based on document content and previous response
+            if (lastResponseLower.includes('業績') || lastResponseLower.includes('売上')) {
+                if (contentLower.includes('計画') || contentLower.includes('目標')) {
+                    return "来期の業績目標についてはいかがでしょうか？";
+                } else {
+                    return "その業績についてもう少し詳しく教えていただけますか？";
+                }
+            } else if (lastResponseLower.includes('戦略') || lastResponseLower.includes('計画')) {
+                if (contentLower.includes('投資') || contentLower.includes('予算')) {
+                    return "その戦略実行のための投資計画はいかがですか？";
+                } else {
+                    return "その戦略の具体的なスケジュールを教えてください。";
+                }
+            } else {
+                // General follow-up questions based on document content
+                if (contentLower.includes('リスク')) {
+                    return "そのリスクへの対策についてはいかがでしょうか？";
+                } else if (contentLower.includes('競合') || contentLower.includes('市場')) {
+                    return "競合他社との比較ではどのような状況でしょうか？";
+                } else {
+                    return "それは株主にとってどのような影響がありますか？";
+                }
+            }
+        }
+        
+        // Default follow-up based on document content
+        return "資料に記載されている内容について、さらに詳しく教えていただけますか？";
     }
     
     // Generate FAQ questions from document content
@@ -159,42 +210,65 @@ class ShareholderAgent {
             ];
         }
         
-        // Analyze document content to generate relevant questions
+        // Analyze full document content to generate comprehensive questions
         const contentLower = content.toLowerCase();
         const questions = [];
         
-        // Check for financial performance content
-        if (contentLower.includes('売上') || contentLower.includes('利益') || contentLower.includes('収益')) {
-            questions.push("今期の業績についてご説明いただけますか？");
+        // Generate questions based on document content analysis
+        // Priority: Financial Performance
+        if (contentLower.includes('売上') || contentLower.includes('利益') || contentLower.includes('収益') || contentLower.includes('業績')) {
+            if (contentLower.includes('増加') || contentLower.includes('成長') || contentLower.includes('向上')) {
+                questions.push("売上高増加の主な要因について詳しく教えてください。");
+            } else if (contentLower.includes('減少') || contentLower.includes('低下') || contentLower.includes('減益')) {
+                questions.push("業績悪化の要因と改善策について教えてください。");
+            } else {
+                questions.push("今期の業績についてご説明いただけますか？");
+            }
         }
         
-        // Check for strategy/business content  
-        if (contentLower.includes('戦略') || contentLower.includes('事業') || contentLower.includes('計画')) {
-            questions.push("今後の事業戦略についてお聞かせください。");
+        // Strategy and Planning
+        if (contentLower.includes('戦略') || contentLower.includes('事業') || contentLower.includes('計画') || contentLower.includes('方針')) {
+            if (contentLower.includes('dx') || contentLower.includes('デジタル') || contentLower.includes('ai')) {
+                questions.push("DX戦略の進捗状況と今後の展開について教えてください。");
+            } else if (contentLower.includes('海外') || contentLower.includes('グローバル') || contentLower.includes('国際')) {
+                questions.push("海外展開戦略の具体的な計画はいかがですか？");
+            } else {
+                questions.push("中期経営計画の進捗状況について教えてください。");
+            }
         }
         
-        // Check for dividend/shareholder return content
-        if (contentLower.includes('配当') || contentLower.includes('株主') || contentLower.includes('還元')) {
-            questions.push("配当政策の変更予定はありますか？");
+        // Shareholder Returns
+        if (contentLower.includes('配当') || contentLower.includes('株主') || contentLower.includes('還元') || contentLower.includes('自己株式')) {
+            questions.push("株主還元方針の変更予定はありますか？");
         }
         
-        // Check for risk/challenge content
-        if (contentLower.includes('リスク') || contentLower.includes('課題') || contentLower.includes('問題')) {
-            questions.push("現在の主要なリスクと対策についてお聞かせください。");
+        // Risk Management
+        if (contentLower.includes('リスク') || contentLower.includes('課題') || contentLower.includes('問題') || contentLower.includes('対策')) {
+            questions.push("現在の主要なリスクファクターと対応策について教えてください。");
         }
         
-        // Check for competitive position content
-        if (contentLower.includes('競合') || contentLower.includes('市場') || contentLower.includes('シェア')) {
-            questions.push("競合他社と比較した当社の強みは何でしょうか？");
+        // Market Position
+        if (contentLower.includes('競合') || contentLower.includes('市場') || contentLower.includes('シェア') || contentLower.includes('ポジション')) {
+            questions.push("市場における競争優位性はどのような点にありますか？");
         }
         
-        // Add additional questions if we don't have enough
+        // ESG/Sustainability
+        if (contentLower.includes('esg') || contentLower.includes('環境') || contentLower.includes('サステナビリティ') || contentLower.includes('社会貢献')) {
+            questions.push("ESGへの取り組み状況と今後の計画について教えてください。");
+        }
+        
+        // Investment and Development
+        if (contentLower.includes('投資') || contentLower.includes('開発') || contentLower.includes('研究') || contentLower.includes('設備')) {
+            questions.push("設備投資や研究開発投資の計画について教えてください。");
+        }
+        
+        // Add additional context-specific questions if we don't have enough
         const additionalQuestions = [
-            "今年度の主要な成果と課題について教えてください。",
+            "コスト削減の具体的な取り組みについて教えてください。",
             "新規事業の収益見通しはいかがですか？",
-            "コスト削減の具体的な取り組みはありますか？",
-            "ESGへの取り組み状況を教えてください。",
-            "デジタル化への投資計画はいかがですか？"
+            "キャッシュフローの状況と資金調達計画はいかがですか？",
+            "人材戦略と組織体制の強化についてお聞かせください。",
+            "技術革新への投資と競争力向上策について教えてください。"
         ];
         
         // Ensure we have exactly 5 questions
