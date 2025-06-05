@@ -112,7 +112,7 @@ exports.uploadDocuments = async (req, res) => {
                 const extractedData = await extractTextFromFile(file.path, file.mimetype);
                 
                 // Extract key topics from document content
-                const topics = extractDocumentTopics(extractedData.text);
+                const topics = await extractDocumentTopics(extractedData.text);
                 
                 const fileMetadata = {
                     id: uuidv4(),
