@@ -97,14 +97,14 @@ class ShareholderAgent {
         // For other types, generate questions based on document content
         if (questionPrompt.documentContext && questionPrompt.documentContext.length > 0) {
             // Use document content to generate contextual questions
-            return this.generateDocumentBasedQuestion(questionPrompt, messageHistory);
+            return await this.generateDocumentBasedQuestion(questionPrompt, messageHistory);
         }
         
         // Fallback
         return "その他にご質問させていただきたい点がございます。";
     }
     
-    generateDocumentBasedQuestion(questionPrompt, messageHistory) {
+    async generateDocumentBasedQuestion(questionPrompt, messageHistory) {
         // Generate questions based on document content analysis
         const documentContent = questionPrompt.documentContext
             .map(doc => doc.content)
@@ -112,19 +112,38 @@ class ShareholderAgent {
         
         if (questionPrompt.type === 'initial') {
             // Generate initial question based on document content keywords
-            return this.generateInitialQuestionFromContent(documentContent);
+            return await this.generateInitialQuestionFromContent(documentContent);
         } else if (questionPrompt.type === 'followup') {
             // Generate follow-up question based on conversation and document content
-            return this.generateFollowUpQuestionFromContent(documentContent, messageHistory);
+            return await this.generateFollowUpQuestionFromContent(documentContent, messageHistory);
         }
         
         return "資料の内容についてご質問がございます。";
     }
     
-    generateInitialQuestionFromContent(documentContent) {
+    async generateInitialQuestionFromContent(documentContent) {
+        // Try to generate AI-powered question first
+        try {
+            if (process.env.AZURE_OPENAI_API_KEY) {
+                const prompt = `以下の企業資料を分析して、株主として最も重要で建設的な質問を1つ生成してください。質問は簡潔で具体的にしてください。
+
+企業資料の内容:
+${documentContent.substring(0, 3000)}
+
+質問のみを出力してください。`;
+
+                const question = await this.callAzureOpenAI(prompt);
+                if (question && question.trim().length > 0) {
+                    return question.trim();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to generate AI question:', error);
+        }
+
+        // Fallback to keyword-based generation
         const contentLower = documentContent.toLowerCase();
         
-        // Analyze document content to generate relevant initial questions
         if (contentLower.includes('売上') || contentLower.includes('業績') || contentLower.includes('利益')) {
             return "今期の業績について詳しくご説明いただけますでしょうか？";
         } else if (contentLower.includes('戦略') || contentLower.includes('計画') || contentLower.includes('将来')) {
@@ -140,7 +159,35 @@ class ShareholderAgent {
         }
     }
     
-    generateFollowUpQuestionFromContent(documentContent, messageHistory) {
+    async generateFollowUpQuestionFromContent(documentContent, messageHistory) {
+        // Try to generate AI-powered follow-up question first
+        try {
+            if (process.env.AZURE_OPENAI_API_KEY) {
+                const lastCompanyMessage = messageHistory.filter(m => m.type === 'company').slice(-1)[0];
+                const conversationContext = lastCompanyMessage ? 
+                    `前回の回答: ${lastCompanyMessage.content}` : 
+                    '初回の質問です。';
+
+                const prompt = `以下の企業資料と会話の流れを基に、株主として適切なフォローアップ質問を1つ生成してください。
+
+企業資料:
+${documentContent.substring(0, 2500)}
+
+会話の流れ:
+${conversationContext}
+
+株主として建設的で具体的なフォローアップ質問を生成してください。質問のみを出力してください。`;
+
+                const question = await this.callAzureOpenAI(prompt);
+                if (question && question.trim().length > 0) {
+                    return question.trim();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to generate AI follow-up question:', error);
+        }
+
+        // Fallback to original logic
         const lastCompanyMessage = messageHistory.filter(m => m.type === 'company').slice(-1)[0];
         const contentLower = documentContent.toLowerCase();
         
@@ -177,13 +224,13 @@ class ShareholderAgent {
     }
     
     // Generate FAQ questions from document content
-    static generateFAQsFromDocuments(documents) {
+    static async generateFAQsFromDocuments(documents) {
         try {
             // Extract key information from documents for FAQ generation
             const combinedContent = documents.map(doc => doc.textContent).join('\n');
             
             // Generate 5 relevant shareholder questions based on document content
-            const faqs = this.generateMockFAQs(combinedContent, documents);
+            const faqs = await this.generateMockFAQs(combinedContent, documents);
             
             return faqs.map((question, index) => ({
                 id: index + 1,
@@ -198,7 +245,47 @@ class ShareholderAgent {
         }
     }
     
-    static generateMockFAQs(content, documents) {
+    static async generateMockFAQs(content, documents) {
+        // Try to generate AI-powered FAQs first
+        try {
+            if (process.env.AZURE_OPENAI_API_KEY) {
+                const agent = new ShareholderAgent([], []);
+                const prompt = `以下の企業資料を分析して、株主総会で株主が経営陣に質問すべき重要な質問を5つ生成してください。
+質問は建設的で具体的であり、株主の利益を考慮したものにしてください。
+
+企業資料:
+${content.substring(0, 4000)}
+
+以下の形式で5つの質問を出力してください:
+1. [質問1]
+2. [質問2] 
+3. [質問3]
+4. [質問4]
+5. [質問5]`;
+
+                const response = await agent.callAzureOpenAI(prompt);
+                if (response && response.trim().length > 0) {
+                    // Parse the numbered list response
+                    const lines = response.trim().split('\n');
+                    const questions = [];
+                    
+                    for (const line of lines) {
+                        const match = line.match(/^\d+\.\s*(.+)$/);
+                        if (match && match[1]) {
+                            questions.push(match[1].trim());
+                        }
+                    }
+                    
+                    if (questions.length >= 3) {
+                        return questions.slice(0, 5);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to generate AI FAQs:', error);
+        }
+
+        // Fallback to original keyword-based generation
         // Handle empty or very short content
         if (!content || content.trim().length < 10) {
             return [

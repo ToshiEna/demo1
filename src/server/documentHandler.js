@@ -121,7 +121,7 @@ exports.generateFAQs = async (req, res) => {
         const ShareholderAgent = require('../ai/shareholderAgent');
         
         // Generate FAQs from document content
-        const faqs = ShareholderAgent.generateFAQsFromDocuments(documents);
+        const faqs = await ShareholderAgent.generateFAQsFromDocuments(documents);
         
         res.json({
             message: `Successfully generated ${faqs.length} FAQ questions`,

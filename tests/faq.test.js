@@ -3,7 +3,7 @@ const app = require('../server');
 const ShareholderAgent = require('../src/ai/shareholderAgent');
 
 describe('FAQ Generation Tests', () => {
-    test('ShareholderAgent should generate FAQs from documents', () => {
+    test('ShareholderAgent should generate FAQs from documents', async () => {
         const mockDocuments = [
             {
                 id: 'test-doc-1',
@@ -20,7 +20,7 @@ describe('FAQ Generation Tests', () => {
             }
         ];
         
-        const faqs = ShareholderAgent.generateFAQsFromDocuments(mockDocuments);
+        const faqs = await ShareholderAgent.generateFAQsFromDocuments(mockDocuments);
         
         expect(faqs).toHaveLength(5);
         expect(faqs[0]).toHaveProperty('id');
@@ -30,10 +30,10 @@ describe('FAQ Generation Tests', () => {
         expect(faqs[0].question.length).toBeGreaterThan(0);
     });
 
-    test('ShareholderAgent should return default FAQs when generation fails', () => {
+    test('ShareholderAgent should return default FAQs when generation fails', async () => {
         const emptyDocuments = [];
         
-        const faqs = ShareholderAgent.generateFAQsFromDocuments(emptyDocuments);
+        const faqs = await ShareholderAgent.generateFAQsFromDocuments(emptyDocuments);
         
         expect(faqs).toHaveLength(5);
         expect(faqs[0].question).toBe('今期の業績についてご説明いただけますか？');
