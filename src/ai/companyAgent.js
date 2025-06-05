@@ -57,48 +57,19 @@ class CompanyAgent {
     }
     
     findRelevantDocumentContent(question) {
-        // Enhanced keyword-based search for relevant content
-        const keywords = this.extractKeywords(question);
-        const relevantSections = [];
-        
-        // Create expanded keyword map for better semantic matching
-        const keywordExpansions = {
-            '業績': ['売上', '利益', '営業利益', '収益', '収入'],
-            '戦略': ['計画', '方針', '施策', '展開', '推進'],
-            '今後': ['将来', '予定', '予想', '見込み', '目標'],
-            '成長': ['拡大', '増加', '向上', '発展']
-        };
-        
-        // Expand keywords to include related terms
-        const expandedKeywords = [...keywords];
-        keywords.forEach(keyword => {
-            if (keywordExpansions[keyword]) {
-                expandedKeywords.push(...keywordExpansions[keyword]);
-            }
-        });
+        // Return full document content instead of keyword-filtered sections
+        // Let the AI model handle content analysis and extraction
+        const documentSections = [];
         
         this.documents.forEach(doc => {
-            const sentences = doc.textContent.split(/[。．\n]/).filter(s => s.trim().length > 10);
-            
-            sentences.forEach(sentence => {
-                const relevanceScore = expandedKeywords.reduce((score, keyword) => {
-                    return score + (sentence.includes(keyword) ? 1 : 0);
-                }, 0);
-                
-                if (relevanceScore > 0) {
-                    relevantSections.push({
-                        source: doc.originalName,
-                        content: sentence.trim(),
-                        relevance: relevanceScore
-                    });
-                }
+            documentSections.push({
+                source: doc.originalName,
+                content: doc.textContent,
+                relevance: 1 // All content is considered relevant
             });
         });
         
-        // Sort by relevance and take top 5
-        return relevantSections
-            .sort((a, b) => b.relevance - a.relevance)
-            .slice(0, 5);
+        return documentSections;
     }
     
     extractKeywords(question) {
@@ -139,21 +110,27 @@ class CompanyAgent {
     }
     
     buildResponsePrompt(question, relevantContext, conversationContext) {
-        // Build context from document content with token limit consideration
+        // Build context from full document content with token limit consideration
         let documentContext = "";
         if (relevantContext && relevantContext.length > 0) {
-            documentContext = "関連資料の内容:\n";
+            documentContext = "アップロード資料の内容:\n";
             let totalLength = 0;
-            const maxDocumentContextLength = 2000; // Rough token limit for document context
+            const maxDocumentContextLength = 4000; // Increased limit for full document content
             
             relevantContext.forEach((section, index) => {
-                const sectionText = `[${section.source}] ${section.content}\n`;
+                const sectionText = `[${section.source}]\n${section.content}\n\n`;
                 if (totalLength + sectionText.length <= maxDocumentContextLength) {
                     documentContext += sectionText;
                     totalLength += sectionText.length;
+                } else {
+                    // Include partial content if we're near the limit
+                    const remainingSpace = maxDocumentContextLength - totalLength;
+                    if (remainingSpace > 500) { // Only add if there's reasonable space
+                        const partialContent = section.content.substring(0, remainingSpace - 100);
+                        documentContext += `[${section.source}]\n${partialContent}...\n\n`;
+                    }
                 }
             });
-            documentContext += "\n";
         }
         
         // Build conversation history with limit
@@ -177,14 +154,15 @@ class CompanyAgent {
         const systemPrompt = `あなたは上場企業の経営陣として、株主総会で株主からの質問に誠実かつ建設的に回答してください。
 
 【重要】以下の制約を厳格に守ってください:
-1. 必ず提供された関連資料の内容のみに基づいて回答する
+1. 必ず提供されたアップロード資料の内容のみに基づいて回答する
 2. 資料に記載されていない情報は一切使用しない
 3. 推測や一般的な知識での補完は行わない
 4. 資料に該当情報がない場合は「資料に記載がない」旨を明確に伝える
 5. 具体的なデータや情報があれば資料から正確に引用する
 6. 回答は600文字以内に収めてください
+7. 質問に関連する情報を資料全体から適切に抽出・分析して回答する
 
-【提供された関連資料の情報】:
+【提供されたアップロード資料】:
 ${documentContext}
 
 【これまでの会話履歴】:
@@ -213,48 +191,46 @@ ${conversationHistory}`;
             return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。より詳細な資料の提供をお願いいたします。";
         }
         
-        // Generate response based on document content only
+        // Simple relevance check for mock response - in production, AI would handle this
         const questionLower = question.toLowerCase();
-        let response = "";
+        const businessKeywords = ['業績', '売上', '利益', '戦略', '計画', '今後', '配当', '株主', 'リスク', '課題', 'dx', 'デジタル'];
+        const hasBusinessContext = businessKeywords.some(keyword => questionLower.includes(keyword));
         
-        if (questionLower.includes('業績') || questionLower.includes('売上') || questionLower.includes('利益')) {
-            response = this.generateDocumentBasedResponse(relevantContext, question, '業績');
-        } else if (questionLower.includes('戦略') || questionLower.includes('計画') || questionLower.includes('今後')) {
-            response = this.generateDocumentBasedResponse(relevantContext, question, '戦略');
-        } else if (questionLower.includes('配当') || questionLower.includes('株主還元')) {
-            response = this.generateDocumentBasedResponse(relevantContext, question, '配当');
-        } else if (questionLower.includes('リスク') || questionLower.includes('課題')) {
-            response = this.generateDocumentBasedResponse(relevantContext, question, 'リスク');
-        } else {
-            response = this.generateDocumentBasedResponse(relevantContext, question, 'その他');
+        // For clearly irrelevant questions (like weather), return appropriate response
+        const irrelevantKeywords = ['天気', '気温', '雨', '晴れ', '雪', '台風'];
+        const isIrrelevant = irrelevantKeywords.some(keyword => questionLower.includes(keyword));
+        
+        if (isIrrelevant || (!hasBusinessContext && questionLower.length < 50)) {
+            return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。より詳細な資料の提供をお願いいたします。";
         }
         
-        return response;
+        // Generate response based on full document content
+        return this.generateDocumentBasedResponse(relevantContext, question);
     }
     
-    generateDocumentBasedResponse(relevantContext, question, category) {
+    generateDocumentBasedResponse(relevantContext, question, category = null) {
         // Generate response based purely on document content
         if (!relevantContext || relevantContext.length === 0) {
             return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
         }
         
-        // Get the most relevant document sections
-        const mainContext = relevantContext[0];
-        const additionalContexts = relevantContext.slice(1, 3); // Get up to 2 additional contexts
+        // Since we now have full document content, provide a more comprehensive response
+        const primaryDocument = relevantContext[0];
         
-        // Build response starting with the most relevant content
-        let response = `${mainContext.source}によりますと、「${mainContext.content}」`;
+        // For mock response, provide a more detailed reference to the document content
+        const contentPreview = primaryDocument.content.substring(0, 200);
+        let response = `${primaryDocument.source}に記載されている内容に基づいてお答えいたします。「${contentPreview}${primaryDocument.content.length > 200 ? '...' : ''}」`;
         
-        // Add additional relevant information if available
-        if (additionalContexts.length > 0) {
-            const additionalInfo = additionalContexts
-                .map(ctx => `また、${ctx.source}には「${ctx.content.substring(0, 80)}${ctx.content.length > 80 ? '...' : ''}」`)
-                .join('');
+        // If there are multiple documents, reference them as well
+        if (relevantContext.length > 1) {
+            const additionalDocs = relevantContext.slice(1, 3);
+            const additionalInfo = additionalDocs
+                .map(ctx => `また、${ctx.source}にも関連する記載がございます`)
+                .join('。');
             response += `。${additionalInfo}`;
         }
         
-        // Add a closing statement based on document content
-        response += "と記載されております。";
+        response += "。詳細につきましては、アップロードされた資料をご参照ください。";
         
         return response;
     }
