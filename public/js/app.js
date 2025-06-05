@@ -227,6 +227,15 @@ async function generateFAQs() {
             generatedFAQs = result.faqs;
             displayFAQs();
             document.getElementById('faq-section').style.display = 'block';
+            
+            // Auto-expand the FAQ section when questions are generated
+            const content = document.getElementById('faq-content');
+            const icon = document.getElementById('faq-toggle-icon');
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            icon.classList.remove('collapsed');
+            icon.classList.add('expanded');
+            
             showSuccess(`${result.faqs.length}個の質問を自動生成しました。`);
         } else {
             throw new Error(result.error || 'FAQ生成に失敗しました。');
@@ -853,4 +862,24 @@ function toggleExistingDocumentSelection(docId, checkboxElement) {
     
     // Update the existing documents display to reflect changes
     displayExistingDocuments();
+}
+
+// FAQ Section Toggle Functions
+function toggleFAQSection() {
+    const content = document.getElementById('faq-content');
+    const icon = document.getElementById('faq-toggle-icon');
+    
+    if (content.classList.contains('collapsed')) {
+        // Expand
+        content.classList.remove('collapsed');
+        content.classList.add('expanded');
+        icon.classList.remove('collapsed');
+        icon.classList.add('expanded');
+    } else {
+        // Collapse
+        content.classList.remove('expanded');
+        content.classList.add('collapsed');
+        icon.classList.remove('expanded');
+        icon.classList.add('collapsed');
+    }
 }

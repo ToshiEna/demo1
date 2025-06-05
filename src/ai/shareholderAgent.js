@@ -285,7 +285,7 @@ ${content.substring(0, 4000)}
             console.error('Failed to generate AI FAQs:', error);
         }
 
-        // Fallback to original keyword-based generation
+        // Fallback to content-based generation when AI is not available
         // Handle empty or very short content
         if (!content || content.trim().length < 10) {
             return [
@@ -297,13 +297,21 @@ ${content.substring(0, 4000)}
             ];
         }
         
-        // Analyze full document content to generate comprehensive questions
-        const contentLower = content.toLowerCase();
+        return this.generateContextSpecificQuestions(content);
+    }
+    
+    static generateContextSpecificQuestions(content) {
         const questions = [];
+        const contentLower = content.toLowerCase();
         
-        // Generate questions based on document content analysis
-        // Priority: Financial Performance
-        if (contentLower.includes('売上') || contentLower.includes('利益') || contentLower.includes('収益') || contentLower.includes('業績')) {
+        // Extract specific information from content using more sophisticated analysis
+        const specificInfo = this.extractSpecificInformation(content);
+        
+        // Generate performance-related questions
+        if (specificInfo.performanceData.length > 0) {
+            const perfData = specificInfo.performanceData[0];
+            questions.push(`${perfData}について、具体的な背景と今後の見通しを教えてください。`);
+        } else if (contentLower.includes('売上') || contentLower.includes('利益') || contentLower.includes('収益') || contentLower.includes('業績')) {
             if (contentLower.includes('増加') || contentLower.includes('成長') || contentLower.includes('向上')) {
                 questions.push("売上高増加の主な要因について詳しく教えてください。");
             } else if (contentLower.includes('減少') || contentLower.includes('低下') || contentLower.includes('減益')) {
@@ -313,8 +321,11 @@ ${content.substring(0, 4000)}
             }
         }
         
-        // Strategy and Planning
-        if (contentLower.includes('戦略') || contentLower.includes('事業') || contentLower.includes('計画') || contentLower.includes('方針')) {
+        // Generate strategy-related questions
+        if (specificInfo.strategyData.length > 0) {
+            const strategyData = specificInfo.strategyData[0];
+            questions.push(`${strategyData}の具体的な実行計画と期待される効果について教えてください。`);
+        } else if (contentLower.includes('戦略') || contentLower.includes('事業') || contentLower.includes('計画') || contentLower.includes('方針')) {
             if (contentLower.includes('dx') || contentLower.includes('デジタル') || contentLower.includes('ai')) {
                 questions.push("DX戦略の進捗状況と今後の展開について教えてください。");
             } else if (contentLower.includes('海外') || contentLower.includes('グローバル') || contentLower.includes('国際')) {
@@ -324,33 +335,34 @@ ${content.substring(0, 4000)}
             }
         }
         
-        // Shareholder Returns
-        if (contentLower.includes('配当') || contentLower.includes('株主') || contentLower.includes('還元') || contentLower.includes('自己株式')) {
+        // Generate shareholder return questions
+        if (specificInfo.shareholderData.length > 0) {
+            const shareholderData = specificInfo.shareholderData[0];
+            questions.push(`${shareholderData}の判断根拠と株主への影響について説明してください。`);
+        } else if (contentLower.includes('配当') || contentLower.includes('株主') || contentLower.includes('還元') || contentLower.includes('自己株式')) {
             questions.push("株主還元方針の変更予定はありますか？");
         }
         
-        // Risk Management
-        if (contentLower.includes('リスク') || contentLower.includes('課題') || contentLower.includes('問題') || contentLower.includes('対策')) {
+        // Generate risk-related questions
+        if (specificInfo.riskData.length > 0) {
+            const riskData = specificInfo.riskData[0];
+            questions.push(`${riskData}に対する具体的な対策と影響度について教えてください。`);
+        } else if (contentLower.includes('リスク') || contentLower.includes('課題') || contentLower.includes('問題') || contentLower.includes('対策')) {
             questions.push("現在の主要なリスクファクターと対応策について教えてください。");
         }
         
-        // Market Position
-        if (contentLower.includes('競合') || contentLower.includes('市場') || contentLower.includes('シェア') || contentLower.includes('ポジション')) {
-            questions.push("市場における競争優位性はどのような点にありますか？");
-        }
-        
-        // ESG/Sustainability
-        if (contentLower.includes('esg') || contentLower.includes('環境') || contentLower.includes('サステナビリティ') || contentLower.includes('社会貢献')) {
-            questions.push("ESGへの取り組み状況と今後の計画について教えてください。");
-        }
-        
-        // Investment and Development
-        if (contentLower.includes('投資') || contentLower.includes('開発') || contentLower.includes('研究') || contentLower.includes('設備')) {
+        // Generate investment-related questions
+        if (specificInfo.investmentData.length > 0) {
+            const investmentData = specificInfo.investmentData[0];
+            questions.push(`${investmentData}の投資効果と収益への貢献について詳しく教えてください。`);
+        } else if (contentLower.includes('投資') || contentLower.includes('開発') || contentLower.includes('研究') || contentLower.includes('設備')) {
             questions.push("設備投資や研究開発投資の計画について教えてください。");
         }
         
-        // Add additional context-specific questions if we don't have enough
+        // Fill remaining slots with contextual questions
         const additionalQuestions = [
+            "市場における競争優位性はどのような点にありますか？",
+            "ESGへの取り組み状況と今後の計画について教えてください。",
             "コスト削減の具体的な取り組みについて教えてください。",
             "新規事業の収益見通しはいかがですか？",
             "キャッシュフローの状況と資金調達計画はいかがですか？",
@@ -369,6 +381,51 @@ ${content.substring(0, 4000)}
         }
         
         return questions.slice(0, 5);
+    }
+    
+    static extractSpecificInformation(content) {
+        const result = {
+            performanceData: [],
+            strategyData: [],
+            shareholderData: [],
+            riskData: [],
+            investmentData: []
+        };
+        
+        // Split content into sentences for analysis
+        const sentences = content.split(/[。．\n]/).filter(s => s.trim().length > 5);
+        
+        for (const sentence of sentences) {
+            const trimmed = sentence.trim();
+            if (trimmed.length < 10) continue;
+            
+            // Extract performance data
+            if (/[0-9]+%.*?増加|[0-9]+%.*?減少|[0-9]+%.*?改善|[0-9]+%.*?向上|営業利益|売上高.*?[0-9]/.test(trimmed)) {
+                result.performanceData.push(trimmed);
+            }
+            
+            // Extract strategy data  
+            if (/事業.*?参入|市場.*?参入|戦略.*?開始|投資.*?拡大|分野.*?投資|サービス.*?開発/.test(trimmed)) {
+                result.strategyData.push(trimmed);
+            }
+            
+            // Extract shareholder return data
+            if (/配当.*?[0-9]|株式取得|還元.*?[0-9]|増配/.test(trimmed)) {
+                result.shareholderData.push(trimmed);
+            }
+            
+            // Extract risk data
+            if (/リスク.*?として|対策.*?として|セキュリティ.*?投資|チェーン.*?多様化/.test(trimmed)) {
+                result.riskData.push(trimmed);
+            }
+            
+            // Extract investment data
+            if (/研究開発費.*?[0-9]|投資.*?[0-9]|年間.*?投資/.test(trimmed)) {
+                result.investmentData.push(trimmed);
+            }
+        }
+        
+        return result;
     }
     
     static getDefaultFAQs() {

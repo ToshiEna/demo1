@@ -43,8 +43,11 @@
 
         <!-- Generated FAQ Section -->
         <section id="faq-section" class="section" style="display: none;">
-            <h2>2. 自動生成された質問一覧</h2>
-            <div class="faq-container">
+            <h2 id="faq-section-header" class="collapsible-header" onclick="toggleFAQSection()">
+                2. 自動生成された質問一覧
+                <span id="faq-toggle-icon" class="toggle-icon collapsed">▼</span>
+            </h2>
+            <div id="faq-content" class="faq-container collapsible-content collapsed">
                 <p class="faq-description">アップロードされた資料から株主の目線で想定される質問を自動生成しました。シミュレーションで使用したい質問を選択してください。</p>
                 <div class="faq-table-container">
                     <table id="faq-table" class="faq-table">
