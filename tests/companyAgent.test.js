@@ -117,4 +117,27 @@ describe('CompanyAgent Document Reference', () => {
         expect(truncated.length).toBeLessThanOrEqual(100);
         expect(typeof truncated).toBe('string');
     });
+
+    test('should limit document context to 50,000 characters', () => {
+        // Create agent with very long document content
+        const longContent = 'これは非常に長い文書のテストです。'.repeat(3500); // About 59,500 characters
+        const longDocuments = [
+            {
+                id: 'doc1',
+                originalName: 'very_long_report.pdf',
+                textContent: longContent
+            }
+        ];
+        
+        const longContentAgent = new CompanyAgent(longDocuments);
+        const prompt = longContentAgent.buildResponsePrompt('テスト質問', [], []);
+        
+        // Extract document context from system prompt
+        const documentContextMatch = prompt.systemPrompt.match(/【提供されたアップロード資料】:\n([\s\S]*?)\n\n【これまでの会話履歴】:/);
+        expect(documentContextMatch).toBeTruthy();
+        
+        const documentContext = documentContextMatch[1];
+        expect(documentContext.length).toBeLessThanOrEqual(50100); // Allow small buffer for formatting
+        expect(longContent.length).toBeGreaterThan(50000); // Verify original was longer than limit
+    });
 });

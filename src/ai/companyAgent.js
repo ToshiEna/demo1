@@ -110,27 +110,28 @@ class CompanyAgent {
     }
     
     buildResponsePrompt(question, relevantContext, conversationContext) {
-        // Build context from full document content with token limit consideration
+        // Simple text extraction from documents with 50,000 character limit
         let documentContext = "";
-        if (relevantContext && relevantContext.length > 0) {
+        if (this.documents && this.documents.length > 0) {
             documentContext = "アップロード資料の内容:\n";
             let totalLength = 0;
-            const maxDocumentContextLength = 4000; // Increased limit for full document content
+            const maxDocumentContextLength = 50000; // 5万文字の制限
             
-            relevantContext.forEach((section, index) => {
-                const sectionText = `[${section.source}]\n${section.content}\n\n`;
-                if (totalLength + sectionText.length <= maxDocumentContextLength) {
-                    documentContext += sectionText;
-                    totalLength += sectionText.length;
+            for (const doc of this.documents) {
+                const docText = `[${doc.originalName}]\n${doc.textContent}\n\n`;
+                if (totalLength + docText.length <= maxDocumentContextLength) {
+                    documentContext += docText;
+                    totalLength += docText.length;
                 } else {
-                    // Include partial content if we're near the limit
+                    // If adding this document would exceed the limit, add partial content
                     const remainingSpace = maxDocumentContextLength - totalLength;
-                    if (remainingSpace > 500) { // Only add if there's reasonable space
-                        const partialContent = section.content.substring(0, remainingSpace - 100);
-                        documentContext += `[${section.source}]\n${partialContent}...\n\n`;
+                    if (remainingSpace > 100) {
+                        const partialText = doc.textContent.substring(0, remainingSpace - 50);
+                        documentContext += `[${doc.originalName}]\n${partialText}...\n\n`;
                     }
+                    break; // Stop processing more documents
                 }
-            });
+            }
         }
         
         // Build conversation history with limit
