@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
 const { v4: uuidv4 } = require('uuid');
+const { extractDocumentTopics } = require('../utils/helpers');
 
 // Store document metadata in memory (in production, use a database)
 const documentsStore = new Map();
@@ -20,6 +21,9 @@ exports.uploadDocuments = async (req, res) => {
                 const pdfBuffer = fs.readFileSync(file.path);
                 const pdfData = await pdfParse(pdfBuffer);
                 
+                // Extract key topics from document content
+                const topics = extractDocumentTopics(pdfData.text);
+                
                 const fileMetadata = {
                     id: uuidv4(),
                     filename: file.filename,
@@ -29,7 +33,8 @@ exports.uploadDocuments = async (req, res) => {
                     mimeType: file.mimetype,
                     uploadedAt: new Date().toISOString(),
                     textContent: pdfData.text,
-                    pageCount: pdfData.numpages
+                    pageCount: pdfData.numpages,
+                    topics: topics
                 };
                 
                 // Store metadata
@@ -41,7 +46,8 @@ exports.uploadDocuments = async (req, res) => {
                     originalName: fileMetadata.originalName,
                     size: fileMetadata.size,
                     uploadedAt: fileMetadata.uploadedAt,
-                    pageCount: fileMetadata.pageCount
+                    pageCount: fileMetadata.pageCount,
+                    topics: topics
                 });
                 
                 console.log(`Successfully processed document: ${file.originalname}`);
@@ -126,5 +132,28 @@ exports.generateFAQs = async (req, res) => {
     } catch (error) {
         console.error('FAQ generation error:', error);
         res.status(500).json({ error: 'Failed to generate FAQs' });
+    }
+};
+
+exports.getAllDocumentsForSelection = async (req, res) => {
+    try {
+        const documents = Array.from(documentsStore.values()).map(doc => ({
+            id: doc.id,
+            filename: doc.filename,
+            originalName: doc.originalName,
+            size: doc.size,
+            uploadedAt: doc.uploadedAt,
+            pageCount: doc.pageCount,
+            topics: doc.topics || []
+        }));
+        
+        res.json({
+            message: `Found ${documents.length} uploaded documents`,
+            documents: documents
+        });
+        
+    } catch (error) {
+        console.error('Get documents error:', error);
+        res.status(500).json({ error: 'Failed to retrieve documents' });
     }
 };
