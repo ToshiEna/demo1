@@ -72,34 +72,7 @@ class CompanyAgent {
         return documentSections;
     }
     
-    extractKeywords(question) {
-        // Improved keyword extraction for Japanese text
-        const commonWords = ['の', 'は', 'が', 'を', 'に', 'で', 'と', 'から', 'まで', 'より', 'について', 'では', 'です', 'ます', 'である', 'する', 'した', 'される', 'いる', 'ある', 'この', 'その', 'あの', 'どの', 'いかが', 'どう', 'なぜ', 'どこ', 'いつ', 'だれ', '何', 'てください', 'ください', 'ました', 'でしょうか', 'ですか'];
-        
-        // Simple approach: extract meaningful character sequences
-        const cleanedQuestion = question.replace(/[？?！!。．、，]/g, '');
-        const keywords = [];
-        
-        // Extract common business terms directly
-        const businessTerms = ['業績', '売上', '売上高', '利益', '営業利益', '戦略', '計画', '成長', 'DX', '配当', '株主還元', 'リスク', '課題', '方針', '今後', '将来'];
-        businessTerms.forEach(term => {
-            if (cleanedQuestion.includes(term)) {
-                keywords.push(term);
-            }
-        });
-        
-        // Also try character-based extraction for other potential keywords
-        // Split by common particles and extract remaining meaningful parts
-        const parts = cleanedQuestion.split(/[のはがをにでとからまでより]/);
-        parts.forEach(part => {
-            const trimmed = part.trim();
-            if (trimmed.length > 1 && !commonWords.includes(trimmed)) {
-                keywords.push(trimmed);
-            }
-        });
-        
-        return [...new Set(keywords)].slice(0, 10); // Remove duplicates and take first 10
-    }
+
     
     buildConversationContext(messageHistory) {
         // Get recent conversation for context
@@ -235,114 +208,17 @@ ${conversationHistory}`;
         return response;
     }
 
-    extractContextualInformation(relevantContext, question) {
-        // Extract and format the most relevant information from document context
-        if (!relevantContext || relevantContext.length === 0) {
-            return null;
-        }
-        
-        const topContext = relevantContext[0]; // Most relevant context
-        const sourceName = topContext.source;
-        const content = topContext.content;
-        
-        // Format the contextual information appropriately
-        return `詳細につきましては、${sourceName}において「${content.substring(0, 100)}${content.length > 100 ? '...' : ''}」と記載しており、これに基づいてご説明いたします。`;
-    }
+
     
-    generatePerformanceResponse(context) {
-        // Generate response based on document content only
-        if (!context || context.length === 0) {
-            return "申し訳ございませんが、業績に関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
-        }
-        
-        const relevantInfo = context.find(c => 
-            c.content.includes('売上') || 
-            c.content.includes('利益') || 
-            c.content.includes('業績') ||
-            c.content.includes('収益')
-        );
-        
-        if (relevantInfo) {
-            return `業績につきまして、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
-        } else {
-            // Use the most relevant document content even if not directly performance-related
-            return `業績に関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
-        }
-    }
+
     
-    generateStrategyResponse(context) {
-        // Generate response based on document content only
-        if (!context || context.length === 0) {
-            return "申し訳ございませんが、戦略に関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
-        }
-        
-        const relevantInfo = context.find(c => 
-            c.content.includes('戦略') || 
-            c.content.includes('計画') || 
-            c.content.includes('今後') ||
-            c.content.includes('方針')
-        );
-        
-        if (relevantInfo) {
-            return `戦略につきまして、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
-        } else {
-            // Use the most relevant document content even if not directly strategy-related
-            return `戦略に関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
-        }
-    }
+
     
-    generateDividendResponse(context) {
-        // Generate response based on document content only
-        if (!context || context.length === 0) {
-            return "申し訳ございませんが、配当に関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
-        }
-        
-        const relevantInfo = context.find(c => 
-            c.content.includes('配当') || 
-            c.content.includes('株主還元') || 
-            c.content.includes('配当性向') ||
-            c.content.includes('還元')
-        );
-        
-        if (relevantInfo) {
-            return `配当につきまして、${relevantInfo.source}に記載されている通り、「${relevantInfo.content}」となっております。`;
-        } else {
-            // Use the most relevant document content even if not directly dividend-related
-            return `配当に関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
-        }
-    }
+
     
-    generateRiskResponse(context) {
-        // Generate response based on document content only
-        if (!context || context.length === 0) {
-            return "申し訳ございませんが、リスクに関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
-        }
-        
-        const relevantInfo = context.find(c => 
-            c.content.includes('リスク') || 
-            c.content.includes('課題') || 
-            c.content.includes('対策') ||
-            c.content.includes('リスク要因')
-        );
-        
-        if (relevantInfo) {
-            return `リスクにつきまして、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
-        } else {
-            // Use the most relevant document content even if not directly risk-related
-            return `リスクに関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
-        }
-    }
+
     
-    generateGenericResponse(question, context) {
-        // Generate response based on document content only
-        if (!context || context.length === 0) {
-            return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。より詳細な資料の提供をお願いいたします。";
-        }
-        
-        // Use the most relevant document content available
-        const mostRelevant = context[0];
-        return `ご質問に関連する内容として、${mostRelevant.source}には「${mostRelevant.content.substring(0, 120)}${mostRelevant.content.length > 120 ? '...' : ''}」と記載されております。`;
-    }
+
     
     async callAzureOpenAI(responsePrompt) {
         // Implementation using Azure OpenAI library
