@@ -42,7 +42,7 @@
 ## Usage Workflow
 
 1. **Upload IR Documents**
-   - Click the upload area or drag & drop PDF files
+   - Click the upload area or drag & drop PDF, Word, or text files
    - Maximum 50MB per file
    - Multiple files supported
 
@@ -85,7 +85,7 @@ NODE_ENV=production npm start
 ## Security Considerations
 
 - **Data Isolation**: Each tenant's data is stored separately
-- **File Validation**: Only PDF files up to 50MB are accepted
+- **File Validation**: PDF, Word, and text files up to 50MB are accepted
 - **Rate Limiting**: Built-in rate limiting for API endpoints
 - **Input Sanitization**: User inputs are sanitized to prevent XSS
 
@@ -99,13 +99,13 @@ NODE_ENV=production npm start
 
 ### Common Issues
 
-1. **PDF Upload Fails**
+1. **Document Upload Fails**
    - Check file size (max 50MB)
-   - Ensure file is valid PDF format
+   - Ensure file is valid PDF, Word (.docx/.doc), or text (.txt) format
    - Check disk space in uploads directory
 
 2. **Simulation Doesn't Start**
-   - Verify at least one PDF is uploaded
+   - Verify at least one document is uploaded
    - Check server logs for errors
    - Ensure port 3000 is available
 
@@ -152,7 +152,7 @@ npm test
 ```
 POST /api/upload
 Content-Type: multipart/form-data
-Body: documents (PDF files)
+Body: documents (PDF, Word, or text files)
 ```
 
 ### Start Simulation

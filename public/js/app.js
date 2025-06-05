@@ -63,11 +63,18 @@ function setupFileUpload() {
         e.preventDefault();
         dropzone.classList.remove('dragover');
         
-        const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+        const allowedTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+            'application/msword', // .doc
+            'text/plain' // .txt
+        ];
+        
+        const files = Array.from(e.dataTransfer.files).filter(file => allowedTypes.includes(file.type));
         if (files.length > 0) {
             uploadFiles(files);
         } else {
-            showError('PDFファイルのみアップロード可能です。');
+            showError('PDF、Word、テキストファイルのみアップロード可能です。');
         }
     });
 }
