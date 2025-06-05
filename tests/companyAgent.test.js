@@ -71,6 +71,35 @@ describe('CompanyAgent Document Reference', () => {
         
         expect(typeof response).toBe('string');
         expect(response.length).toBeGreaterThan(20);
+        // Should indicate that information is not available in documents
+        expect(response).toContain('申し訳ございません');
+        expect(response).toContain('資料から関連する情報を見つけることができませんでした');
+    });
+
+    test('should respond only with document-based content when relevant content is found', async () => {
+        const question = '売上について教えてください';
+        const response = await agent.generateResponse(question);
+        
+        expect(typeof response).toBe('string');
+        expect(response.length).toBeGreaterThan(20);
+        // Should reference the document source
+        expect(response).toContain('annual_report.pdf');
+        // Should not contain generic templated language
+        expect(response).not.toContain('堅調に推移');
+        expect(response).not.toContain('計画を上回る成果');
+    });
+
+    test('should not provide hardcoded responses when no document content matches', async () => {
+        // Create agent with documents that don't contain weather information
+        const weatherQuestion = '明日の天気はどうですか？';
+        const response = await agent.generateResponse(weatherQuestion);
+        
+        // Should explicitly state that information is not available
+        expect(response).toContain('申し訳ございません');
+        expect(response).toContain('資料から関連する情報を見つけることができませんでした');
+        // Should not contain any generic business responses
+        expect(response).not.toContain('適切な対応を図っており');
+        expect(response).not.toContain('検討を進めており');
     });
 
     test('should limit response to 600 characters', async () => {

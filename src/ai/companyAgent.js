@@ -199,36 +199,61 @@ ${documentContext}${conversationHistory}`;
     }
     
     async generateMockResponse(question, relevantContext) {
-        // Improved mock implementation that actually uses document content
+        // Document-only response implementation - only respond based on uploaded document content
         
+        const hasRelevantContent = relevantContext && relevantContext.length > 0;
+        
+        // If no relevant document content is found, explicitly state this limitation
+        if (!hasRelevantContent) {
+            return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。より詳細な資料の提供をお願いいたします。";
+        }
+        
+        // Generate response based on document content only
         const questionLower = question.toLowerCase();
-        let baseResponse = "";
-        let hasRelevantContent = relevantContext && relevantContext.length > 0;
+        let response = "";
         
-        // Generate content-aware responses based on question type and available context
         if (questionLower.includes('業績') || questionLower.includes('売上') || questionLower.includes('利益')) {
-            baseResponse = this.generatePerformanceResponse(relevantContext);
+            response = this.generateDocumentBasedResponse(relevantContext, question, '業績');
         } else if (questionLower.includes('戦略') || questionLower.includes('計画') || questionLower.includes('今後')) {
-            baseResponse = this.generateStrategyResponse(relevantContext);
+            response = this.generateDocumentBasedResponse(relevantContext, question, '戦略');
         } else if (questionLower.includes('配当') || questionLower.includes('株主還元')) {
-            baseResponse = this.generateDividendResponse(relevantContext);
+            response = this.generateDocumentBasedResponse(relevantContext, question, '配当');
         } else if (questionLower.includes('リスク') || questionLower.includes('課題')) {
-            baseResponse = this.generateRiskResponse(relevantContext);
+            response = this.generateDocumentBasedResponse(relevantContext, question, 'リスク');
         } else {
-            baseResponse = this.generateGenericResponse(question, relevantContext);
+            response = this.generateDocumentBasedResponse(relevantContext, question, 'その他');
         }
         
-        // If we have relevant document content, enhance the response with specific information
-        if (hasRelevantContent) {
-            const contextualInfo = this.extractContextualInformation(relevantContext, question);
-            if (contextualInfo) {
-                baseResponse += `\n\n${contextualInfo}`;
-            }
-        }
-        
-        return baseResponse;
+        return response;
     }
     
+    generateDocumentBasedResponse(relevantContext, question, category) {
+        // Generate response based purely on document content
+        if (!relevantContext || relevantContext.length === 0) {
+            return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
+        }
+        
+        // Get the most relevant document sections
+        const mainContext = relevantContext[0];
+        const additionalContexts = relevantContext.slice(1, 3); // Get up to 2 additional contexts
+        
+        // Build response starting with the most relevant content
+        let response = `${mainContext.source}によりますと、「${mainContext.content}」`;
+        
+        // Add additional relevant information if available
+        if (additionalContexts.length > 0) {
+            const additionalInfo = additionalContexts
+                .map(ctx => `また、${ctx.source}には「${ctx.content.substring(0, 80)}${ctx.content.length > 80 ? '...' : ''}」`)
+                .join('');
+            response += `。${additionalInfo}`;
+        }
+        
+        // Add a closing statement based on document content
+        response += "と記載されております。";
+        
+        return response;
+    }
+
     extractContextualInformation(relevantContext, question) {
         // Extract and format the most relevant information from document context
         if (!relevantContext || relevantContext.length === 0) {
@@ -244,133 +269,98 @@ ${documentContext}${conversationHistory}`;
     }
     
     generatePerformanceResponse(context) {
-        const responses = [
-            "今期の業績につきましては、売上高は前年同期比で堅調に推移しております。主力事業の好調に加え、新規事業の寄与により、計画を上回る成果を達成することができました。",
-            "業績の詳細につきまして、売上面では市場拡大と競争力強化の取り組みが実を結び、着実な成長を実現しております。利益面でも効率化の推進により、収益性の向上を図っております。",
-            "当期の業績は、全社一丸となった取り組みの結果、おおむね計画通りに進捗しております。特に主力製品の販売が好調で、市場シェアの拡大も実現できました。"
-        ];
-        
-        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        // Enhance response with specific document content if available
-        if (context && context.length > 0) {
-            const relevantInfo = context.find(c => 
-                c.content.includes('売上') || 
-                c.content.includes('利益') || 
-                c.content.includes('業績') ||
-                c.content.includes('収益')
-            );
-            
-            if (relevantInfo) {
-                return `${baseResponse} 具体的には、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
-            } else {
-                return `${baseResponse} 詳細につきましては、${context[0].source}をご参照ください。`;
-            }
+        // Generate response based on document content only
+        if (!context || context.length === 0) {
+            return "申し訳ございませんが、業績に関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
         }
         
-        return baseResponse;
+        const relevantInfo = context.find(c => 
+            c.content.includes('売上') || 
+            c.content.includes('利益') || 
+            c.content.includes('業績') ||
+            c.content.includes('収益')
+        );
+        
+        if (relevantInfo) {
+            return `業績につきまして、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
+        } else {
+            // Use the most relevant document content even if not directly performance-related
+            return `業績に関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
+        }
     }
     
     generateStrategyResponse(context) {
-        const responses = [
-            "今後の戦略につきましては、中長期的な成長を見据え、既存事業の強化と新規領域への展開を両輪として推進してまいります。",
-            "戦略的な取り組みとして、DXの推進、グローバル展開の加速、そして持続可能な経営の実現に注力してまいります。",
-            "将来に向けた計画として、市場ニーズの変化に対応した製品・サービスの開発と、効率的な事業運営の確立を図ってまいります。"
-        ];
-        
-        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        // Enhance response with specific document content if available
-        if (context && context.length > 0) {
-            const relevantInfo = context.find(c => 
-                c.content.includes('戦略') || 
-                c.content.includes('計画') || 
-                c.content.includes('今後') ||
-                c.content.includes('方針')
-            );
-            
-            if (relevantInfo) {
-                return `${baseResponse} 当社の戦略文書にも記載されておりますが、${relevantInfo.content}`;
-            } else {
-                return `${baseResponse} 詳細な戦略については、${context[0].source}にて詳しく説明しております。`;
-            }
+        // Generate response based on document content only
+        if (!context || context.length === 0) {
+            return "申し訳ございませんが、戦略に関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
         }
         
-        return baseResponse;
+        const relevantInfo = context.find(c => 
+            c.content.includes('戦略') || 
+            c.content.includes('計画') || 
+            c.content.includes('今後') ||
+            c.content.includes('方針')
+        );
+        
+        if (relevantInfo) {
+            return `戦略につきまして、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
+        } else {
+            // Use the most relevant document content even if not directly strategy-related
+            return `戦略に関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
+        }
     }
     
     generateDividendResponse(context) {
-        const responses = [
-            "配当政策につきましては、安定的かつ継続的な株主還元を基本方針としており、業績の向上に応じた配当の充実に努めてまいります。",
-            "株主還元については、連結配当性向30%を目安として、安定配当の維持と業績連動による増配を組み合わせた政策を継続いたします。",
-            "配当に関しては、将来の成長投資とのバランスを考慮しながら、株主の皆様のご期待にお応えできるよう努めてまいります。"
-        ];
-        
-        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        // Enhance response with specific document content if available
-        if (context && context.length > 0) {
-            const relevantInfo = context.find(c => 
-                c.content.includes('配当') || 
-                c.content.includes('株主還元') || 
-                c.content.includes('配当性向') ||
-                c.content.includes('還元')
-            );
-            
-            if (relevantInfo) {
-                return `${baseResponse} 具体的な配当方針については、${relevantInfo.source}に「${relevantInfo.content}」と明記しております。`;
-            } else {
-                return `${baseResponse} 配当の詳細な方針は${context[0].source}をご確認ください。`;
-            }
+        // Generate response based on document content only
+        if (!context || context.length === 0) {
+            return "申し訳ございませんが、配当に関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
         }
         
-        return baseResponse;
+        const relevantInfo = context.find(c => 
+            c.content.includes('配当') || 
+            c.content.includes('株主還元') || 
+            c.content.includes('配当性向') ||
+            c.content.includes('還元')
+        );
+        
+        if (relevantInfo) {
+            return `配当につきまして、${relevantInfo.source}に記載されている通り、「${relevantInfo.content}」となっております。`;
+        } else {
+            // Use the most relevant document content even if not directly dividend-related
+            return `配当に関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
+        }
     }
     
     generateRiskResponse(context) {
-        const responses = [
-            "リスク管理につきましては、市場環境の変化、競争激化、規制変更等を主要リスクとして認識し、適切な対策を講じております。",
-            "事業運営上の課題として、人材確保、技術革新への対応、サプライチェーンの安定化等に取り組んでおります。",
-            "リスク要因については、定期的な見直しと評価を行い、必要に応じて追加的な対策を実施してまいります。"
-        ];
-        
-        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        // Enhance response with specific document content if available
-        if (context && context.length > 0) {
-            const relevantInfo = context.find(c => 
-                c.content.includes('リスク') || 
-                c.content.includes('課題') || 
-                c.content.includes('対策') ||
-                c.content.includes('リスク要因')
-            );
-            
-            if (relevantInfo) {
-                return `${baseResponse} 当社が認識している具体的なリスクとして、${relevantInfo.source}に記載の通り、${relevantInfo.content}`;
-            } else {
-                return `${baseResponse} リスクの詳細については、${context[0].source}のリスク情報をご参照ください。`;
-            }
+        // Generate response based on document content only
+        if (!context || context.length === 0) {
+            return "申し訳ございませんが、リスクに関する情報について、現在アップロードされている資料から関連する情報を見つけることができませんでした。";
         }
         
-        return baseResponse;
+        const relevantInfo = context.find(c => 
+            c.content.includes('リスク') || 
+            c.content.includes('課題') || 
+            c.content.includes('対策') ||
+            c.content.includes('リスク要因')
+        );
+        
+        if (relevantInfo) {
+            return `リスクにつきまして、${relevantInfo.source}に記載されている通り、${relevantInfo.content}`;
+        } else {
+            // Use the most relevant document content even if not directly risk-related
+            return `リスクに関するお尋ねですが、${context[0].source}には「${context[0].content}」と記載されております。`;
+        }
     }
     
     generateGenericResponse(question, context) {
-        const responses = [
-            "ご質問いただいた点につきまして、当社では適切な対応を図っており、今後も継続的な改善に努めてまいります。",
-            "お尋ねの件については、関係部門と連携して検討を進めており、適切な時期にご報告させていただきます。",
-            "ご指摘の点は重要な課題として認識しており、全社を挙げて取り組んでまいります。"
-        ];
-        
-        const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-        
-        if (context && context.length > 0) {
-            // Try to find any relevant content that might relate to the question
-            const mostRelevant = context[0];
-            return baseResponse + ` なお、${mostRelevant.source}にも関連する記載がございますので、併せてご参照ください。「${mostRelevant.content.substring(0, 80)}${mostRelevant.content.length > 80 ? '...' : ''}」`;
+        // Generate response based on document content only
+        if (!context || context.length === 0) {
+            return "申し訳ございませんが、ご質問の内容について、現在アップロードされている資料から関連する情報を見つけることができませんでした。より詳細な資料の提供をお願いいたします。";
         }
         
-        return baseResponse;
+        // Use the most relevant document content available
+        const mostRelevant = context[0];
+        return `ご質問に関連する内容として、${mostRelevant.source}には「${mostRelevant.content.substring(0, 120)}${mostRelevant.content.length > 120 ? '...' : ''}」と記載されております。`;
     }
     
     async callAzureOpenAI(responsePrompt) {
