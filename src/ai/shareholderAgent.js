@@ -148,6 +148,17 @@ class ShareholderAgent {
     }
     
     static generateMockFAQs(content, documents) {
+        // Handle empty or very short content
+        if (!content || content.trim().length < 10) {
+            return [
+                "今期の業績についてご説明いただけますか？",
+                "今後の事業戦略についてお聞かせください。",
+                "配当政策の変更予定はありますか？",
+                "現在の主要なリスクと対策についてお聞かせください。",
+                "競合他社と比較した当社の強みは何でしょうか？"
+            ];
+        }
+        
         // Analyze document content to generate relevant questions
         const contentLower = content.toLowerCase();
         const questions = [];
