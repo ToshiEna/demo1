@@ -125,6 +125,101 @@ class ShareholderAgent {
         return "その他にご質問させていただきたい点がございます。";
     }
     
+    // Generate FAQ questions from document content
+    static generateFAQsFromDocuments(documents) {
+        try {
+            // Extract key information from documents for FAQ generation
+            const combinedContent = documents.map(doc => doc.textContent).join('\n');
+            
+            // Generate 5 relevant shareholder questions based on document content
+            const faqs = this.generateMockFAQs(combinedContent, documents);
+            
+            return faqs.map((question, index) => ({
+                id: index + 1,
+                question: question,
+                selected: false
+            }));
+            
+        } catch (error) {
+            console.error('Failed to generate FAQs:', error);
+            // Return default questions if generation fails
+            return this.getDefaultFAQs();
+        }
+    }
+    
+    static generateMockFAQs(content, documents) {
+        // Handle empty or very short content
+        if (!content || content.trim().length < 10) {
+            return [
+                "今期の業績についてご説明いただけますか？",
+                "今後の事業戦略についてお聞かせください。",
+                "配当政策の変更予定はありますか？",
+                "現在の主要なリスクと対策についてお聞かせください。",
+                "競合他社と比較した当社の強みは何でしょうか？"
+            ];
+        }
+        
+        // Analyze document content to generate relevant questions
+        const contentLower = content.toLowerCase();
+        const questions = [];
+        
+        // Check for financial performance content
+        if (contentLower.includes('売上') || contentLower.includes('利益') || contentLower.includes('収益')) {
+            questions.push("今期の業績についてご説明いただけますか？");
+        }
+        
+        // Check for strategy/business content  
+        if (contentLower.includes('戦略') || contentLower.includes('事業') || contentLower.includes('計画')) {
+            questions.push("今後の事業戦略についてお聞かせください。");
+        }
+        
+        // Check for dividend/shareholder return content
+        if (contentLower.includes('配当') || contentLower.includes('株主') || contentLower.includes('還元')) {
+            questions.push("配当政策の変更予定はありますか？");
+        }
+        
+        // Check for risk/challenge content
+        if (contentLower.includes('リスク') || contentLower.includes('課題') || contentLower.includes('問題')) {
+            questions.push("現在の主要なリスクと対策についてお聞かせください。");
+        }
+        
+        // Check for competitive position content
+        if (contentLower.includes('競合') || contentLower.includes('市場') || contentLower.includes('シェア')) {
+            questions.push("競合他社と比較した当社の強みは何でしょうか？");
+        }
+        
+        // Add additional questions if we don't have enough
+        const additionalQuestions = [
+            "今年度の主要な成果と課題について教えてください。",
+            "新規事業の収益見通しはいかがですか？",
+            "コスト削減の具体的な取り組みはありますか？",
+            "ESGへの取り組み状況を教えてください。",
+            "デジタル化への投資計画はいかがですか？"
+        ];
+        
+        // Ensure we have exactly 5 questions
+        while (questions.length < 5) {
+            const remainingQuestions = additionalQuestions.filter(q => !questions.includes(q));
+            if (remainingQuestions.length > 0) {
+                questions.push(remainingQuestions[0]);
+            } else {
+                break;
+            }
+        }
+        
+        return questions.slice(0, 5);
+    }
+    
+    static getDefaultFAQs() {
+        return [
+            { id: 1, question: "今期の業績についてご説明いただけますか？", selected: false },
+            { id: 2, question: "今後の事業戦略についてお聞かせください。", selected: false },
+            { id: 3, question: "配当政策の変更予定はありますか？", selected: false },
+            { id: 4, question: "現在の主要なリスクと対策についてお聞かせください。", selected: false },
+            { id: 5, question: "競合他社と比較した当社の強みは何でしょうか？", selected: false }
+        ];
+    }
+    
     async callAzureOpenAI(prompt) {
         // Implementation using Azure OpenAI library
         if (!process.env.AZURE_OPENAI_API_KEY) {

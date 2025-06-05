@@ -46,6 +46,7 @@ const voiceHandler = require('./src/server/voiceHandler');
 
 // API Routes
 app.post('/api/upload', upload.array('documents', 10), documentHandler.uploadDocuments);
+app.post('/api/documents/generate-faq', documentHandler.generateFAQs);
 app.post('/api/simulation/start', simulationHandler.startSimulation);
 app.get('/api/simulation/:sessionId', simulationHandler.getSimulation);
 app.post('/api/simulation/:sessionId/message', simulationHandler.sendMessage);
