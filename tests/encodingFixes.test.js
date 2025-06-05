@@ -18,7 +18,7 @@ describe('Character Encoding Fixes', () => {
         }
     });
     
-    test('should filter out garbled characters from topic extraction', () => {
+    test('should filter out garbled characters from topic extraction', async () => {
         const textWithGarbledChars = `
         売上高は前年同期比10%増加しました。
         + 0 . 7 p �e��Ђ̏��L�҂ɋA�����铖�����v 1,959 3,719 2,335 +19.2% 4,100 +10.2% �i �����j 12.3% 12.0% 13
@@ -26,7 +26,7 @@ describe('Character Encoding Fixes', () => {
         - �i�����j - 0 .5 % 1.4% -
         `;
         
-        const topics = extractDocumentTopics(textWithGarbledChars);
+        const topics = await extractDocumentTopics(textWithGarbledChars);
         
         // Should only extract clean Japanese topics, not garbled ones
         expect(topics.length).toBeGreaterThan(0);
@@ -41,7 +41,7 @@ describe('Character Encoding Fixes', () => {
         expect(topicsText).toMatch(/売上高|営業利益|新規事業|投資/);
     });
     
-    test('should handle normal Japanese text correctly', () => {
+    test('should handle normal Japanese text correctly', async () => {
         const normalJapaneseText = `
         2023年度決算について報告いたします。
         当期の売上高は100億円となり、前年同期比15%の増収となりました。
@@ -50,7 +50,7 @@ describe('Character Encoding Fixes', () => {
         株主の皆様への配当は1株当たり50円を予定しております。
         `;
         
-        const topics = extractDocumentTopics(normalJapaneseText);
+        const topics = await extractDocumentTopics(normalJapaneseText);
         
         expect(topics.length).toBeGreaterThan(0);
         expect(topics.length).toBeLessThanOrEqual(5);

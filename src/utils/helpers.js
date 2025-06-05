@@ -1,7 +1,71 @@
+const { AzureOpenAI } = require('openai');
+
 /**
- * Extract key topics from document content
+ * Generate AI-powered topic summaries from document content
  */
-function extractDocumentTopics(textContent, maxTopics = 5) {
+async function generateTopicSummaries(textContent, maxTopics = 5) {
+    // Try to use Azure OpenAI if configured
+    if (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT) {
+        try {
+            const client = new AzureOpenAI({
+                endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+                apiKey: process.env.AZURE_OPENAI_API_KEY,
+                deployment: process.env.AZURE_OPENAI_DEPLOYMENT_NAME,
+                apiVersion: "2024-04-01-preview"
+            });
+
+            // Limit text content to avoid token limits (first 10,000 characters)
+            const limitedText = textContent.substring(0, 10000);
+            
+            const prompt = `以下の企業文書から、株主にとって重要な主要トピックを${maxTopics}つ抽出し、それぞれを1-2文で要約してください。数字だけでなく、その背景や意味を含めた分かりやすい要約にしてください。
+
+文書内容：
+${limitedText}
+
+要求：
+- ${maxTopics}つの主要トピックを抽出
+- 各トピックは1-2文で要約
+- 数字の背景や意味を説明
+- 株主の関心事項を重視
+- 各行に1つのトピックを記載（番号なし）`;
+
+            const response = await client.chat.completions.create({
+                messages: [
+                    {
+                        role: "system",
+                        content: "あなたは企業のIR資料を分析する専門アシスタントです。株主にとって重要な情報を分かりやすく要約します。"
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ],
+                max_tokens: 500,
+                temperature: 0.3,
+                model: process.env.AZURE_OPENAI_DEPLOYMENT_NAME
+            });
+            
+            const summary = response.choices[0].message.content;
+            if (summary && summary.trim().length > 0) {
+                // Split the response into individual topics and clean them
+                return summary.trim().split('\n')
+                    .map(topic => topic.trim())
+                    .filter(topic => topic.length > 0 && !topic.match(/^\d+[\.\)]/))  // Remove numbered items
+                    .slice(0, maxTopics);
+            }
+        } catch (error) {
+            console.warn('Failed to generate AI topic summaries, falling back to keyword extraction:', error.message);
+        }
+    }
+    
+    // Fallback to existing keyword-based extraction
+    return extractDocumentTopicsKeyword(textContent, maxTopics);
+}
+
+/**
+ * Extract key topics from document content using keyword-based approach
+ */
+function extractDocumentTopicsKeyword(textContent, maxTopics = 5) {
     if (!textContent || textContent.trim().length === 0) {
         return [];
     }
@@ -80,8 +144,18 @@ function extractDocumentTopics(textContent, maxTopics = 5) {
         .map(item => item.content);
 }
 
-
+/**
+ * Extract key topics from document content (main function that uses AI when available)
+ */
+async function extractDocumentTopics(textContent, maxTopics = 5) {
+    if (!textContent || textContent.trim().length === 0) {
+        return [];
+    }
+    return await generateTopicSummaries(textContent, maxTopics);
+}
 
 module.exports = {
-    extractDocumentTopics
+    extractDocumentTopics,
+    extractDocumentTopicsKeyword,
+    generateTopicSummaries
 };
