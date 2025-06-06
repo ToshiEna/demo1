@@ -4,6 +4,7 @@ let uploadedDocuments = [];
 let generatedFAQs = [];
 let isSimulationActive = false;
 let messageCount = 0;
+let currentMessages = []; // Store current messages for sequential playback
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
@@ -43,6 +44,9 @@ function setupEventListeners() {
     
     // Existing documents
     document.getElementById('load-existing-docs').addEventListener('click', loadExistingDocuments);
+    
+    // Sequential Q&A playback
+    document.getElementById('play-qa-sequence').addEventListener('click', playQASequence);
 }
 
 function setupFileUpload() {
@@ -431,6 +435,9 @@ function updateChatMessages(messages) {
     const chatContainer = document.getElementById('chat-messages');
     const currentMessageCount = chatContainer.children.length;
     
+    // Store messages globally for sequential playback
+    currentMessages = messages;
+    
     // Add new messages
     for (let i = currentMessageCount; i < messages.length; i++) {
         const message = messages[i];
@@ -745,6 +752,150 @@ async function playMessageAudio(messageId, agentType, buttonElement) {
         buttonElement.disabled = false;
         showError(error.message || '音声再生エラーが発生しました。');
     }
+}
+
+/**
+ * Play Q&A messages in sequence (shareholder question followed by company answer)
+ */
+async function playQASequence() {
+    try {
+        // Check if voice service is available
+        const isAvailable = await checkVoiceServiceStatus();
+        if (!isAvailable) {
+            showError('音声機能は利用できません。Azure Speech Servicesの設定を確認してください。');
+            return;
+        }
+        
+        // Check if there are messages to play
+        if (!currentMessages || currentMessages.length === 0) {
+            showError('再生するメッセージがありません。');
+            return;
+        }
+        
+        // Stop any currently playing audio
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        
+        // Reset all individual play buttons
+        document.querySelectorAll('.play-button').forEach(btn => {
+            btn.textContent = '🔊';
+            btn.disabled = false;
+        });
+        
+        const sequenceButton = document.getElementById('play-qa-sequence');
+        sequenceButton.disabled = true;
+        sequenceButton.textContent = '⏸️ 再生中...';
+        
+        // Group messages into Q&A pairs
+        const qaPairs = [];
+        for (let i = 0; i < currentMessages.length; i++) {
+            const message = currentMessages[i];
+            if (message.type === 'shareholder') {
+                // Find the corresponding company response
+                const companyResponse = currentMessages.find((m, idx) => 
+                    idx > i && m.type === 'company');
+                if (companyResponse) {
+                    qaPairs.push({
+                        question: message,
+                        answer: companyResponse
+                    });
+                }
+            }
+        }
+        
+        if (qaPairs.length === 0) {
+            showError('Q&Aペアが見つかりません。');
+            resetSequenceButton();
+            return;
+        }
+        
+        // Play each Q&A pair sequentially
+        for (let i = 0; i < qaPairs.length; i++) {
+            const pair = qaPairs[i];
+            
+            // Play shareholder question
+            await playMessageSequentially(pair.question.content, 'shareholder');
+            
+            // Small pause between question and answer
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Play company answer
+            await playMessageSequentially(pair.answer.content, 'company');
+            
+            // Pause between Q&A pairs (except for the last one)
+            if (i < qaPairs.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        resetSequenceButton();
+        
+    } catch (error) {
+        console.error('Sequential playback error:', error);
+        showError(error.message || 'Q&A再生エラーが発生しました。');
+        resetSequenceButton();
+    }
+}
+
+/**
+ * Reset the sequence button to initial state
+ */
+function resetSequenceButton() {
+    const sequenceButton = document.getElementById('play-qa-sequence');
+    sequenceButton.disabled = false;
+    sequenceButton.textContent = '🔊 Q&A再生';
+}
+
+/**
+ * Play a single message in sequence
+ * @param {string} text - Text to play
+ * @param {string} agentType - 'shareholder' or 'company'
+ * @returns {Promise} Promise that resolves when audio finishes
+ */
+async function playMessageSequentially(text, agentType) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Request audio from server
+            const response = await fetch('/api/voice/text-to-speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    agentType: agentType
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '音声生成に失敗しました。');
+            }
+            
+            // Create audio blob and play
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            const audio = new Audio(audioUrl);
+            
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+                resolve();
+            };
+            
+            audio.onerror = () => {
+                URL.revokeObjectURL(audioUrl);
+                reject(new Error('音声の再生に失敗しました。'));
+            };
+            
+            await audio.play();
+            
+        } catch (error) {
+            reject(error);
+        }
+    });
 }
 
 // Initialize voice service status check when page loads
