@@ -408,6 +408,17 @@ header p {
     color: #666;
 }
 
+#play-qa-sequence {
+    font-size: 14px;
+    padding: 8px 16px;
+    min-width: 120px;
+}
+
+#play-qa-sequence:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 /* Session History */
 .session-list {
     margin-bottom: 20px;
