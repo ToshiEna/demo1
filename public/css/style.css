@@ -1,3 +1,60 @@
+/* CSS Custom Properties for Theming */
+:root {
+    /* Light mode colors */
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #fafafa;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+    --border-primary: #dddddd;
+    --border-secondary: #eeeeee;
+    --shadow-primary: rgba(0, 0, 0, 0.1);
+    --shadow-secondary: rgba(0, 0, 0, 0.05);
+    
+    /* Status colors */
+    --status-ready-bg: #d4edda;
+    --status-ready-text: #155724;
+    --status-active-bg: #d1ecf1;
+    --status-active-text: #0c5460;
+    --status-error-bg: #f8d7da;
+    --status-error-text: #721c24;
+    --status-default-bg: #e9ecef;
+    
+    /* Interactive elements */
+    --hover-bg: #f8f9fa;
+    --selected-bg: #e3f2fd;
+    --selected-border: #007bff;
+}
+
+/* Dark mode colors */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #888888;
+    --border-primary: #404040;
+    --border-secondary: #505050;
+    --shadow-primary: rgba(0, 0, 0, 0.3);
+    --shadow-secondary: rgba(0, 0, 0, 0.2);
+    
+    /* Status colors - adjusted for dark mode */
+    --status-ready-bg: #1e3a1e;
+    --status-ready-text: #4caf50;
+    --status-active-bg: #1e2a3a;
+    --status-active-text: #64b5f6;
+    --status-error-bg: #3a1e1e;
+    --status-error-text: #f44336;
+    --status-default-bg: #404040;
+    
+    /* Interactive elements */
+    --hover-bg: #404040;
+    --selected-bg: #1e3a5f;
+    --selected-border: #42a5f5;
+}
+
 /* Global Styles */
 * {
     margin: 0;
@@ -8,8 +65,9 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: #f5f5f5;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .container {
@@ -20,13 +78,24 @@ body {
 
 /* Header */
 header {
-    text-align: center;
     margin-bottom: 40px;
     padding: 30px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px var(--shadow-primary);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 100%;
+}
+
+.header-text {
+    text-align: center;
+    flex: 1;
 }
 
 header h1 {
@@ -40,42 +109,86 @@ header p {
     opacity: 0.9;
 }
 
+/* Dark Mode Toggle */
+.dark-mode-toggle {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dark-mode-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+}
+
+.dark-mode-toggle:active {
+    transform: scale(0.95);
+}
+
+/* Responsive header */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .header-text {
+        text-align: center;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+}
+
 /* Section Styles */
 .section {
-    background: white;
+    background: var(--bg-secondary);
     margin-bottom: 30px;
     padding: 30px;
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px var(--shadow-primary);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .section h2 {
     color: #667eea;
     margin-bottom: 20px;
     font-size: 1.5rem;
-    border-bottom: 2px solid #eee;
+    border-bottom: 2px solid var(--border-secondary);
     padding-bottom: 10px;
 }
 
 /* Upload Section */
 .upload-dropzone {
-    border: 3px dashed #ddd;
+    border: 3px dashed var(--border-primary);
     border-radius: 10px;
     padding: 40px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    background-color: #fafafa;
+    background-color: var(--bg-tertiary);
 }
 
 .upload-dropzone:hover {
     border-color: #667eea;
-    background-color: #f0f4ff;
+    background-color: var(--hover-bg);
 }
 
 .upload-dropzone.dragover {
     border-color: #667eea;
-    background-color: #e8f0ff;
+    background-color: var(--hover-bg);
 }
 
 .upload-icon {
@@ -92,9 +205,10 @@ header p {
     align-items: center;
     justify-content: space-between;
     padding: 10px;
-    background: #f8f9fa;
+    background: var(--hover-bg);
     border-radius: 5px;
     margin-bottom: 10px;
+    border: 1px solid var(--border-primary);
 }
 
 .file-info {
@@ -119,7 +233,7 @@ header p {
 .file-topics {
     margin-top: 8px;
     padding: 8px;
-    background: #fff;
+    background: var(--bg-secondary);
     border-radius: 4px;
     border-left: 3px solid #007bff;
 }
@@ -137,27 +251,27 @@ header p {
 .file-topics li {
     margin-bottom: 3px;
     font-size: 0.85rem;
-    color: #555;
+    color: var(--text-secondary);
     line-height: 1.3;
 }
 
 .file-topics em {
-    color: #999;
+    color: var(--text-muted);
     font-size: 0.85rem;
 }
 
 .upload-subsection {
     margin-bottom: 25px;
     padding: 15px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--border-primary);
     border-radius: 8px;
-    background: #fafafa;
+    background: var(--bg-tertiary);
 }
 
 .upload-subsection h3 {
     margin: 0 0 15px 0;
     font-size: 1.1rem;
-    color: #495057;
+    color: var(--text-primary);
 }
 
 .existing-docs-container {
@@ -175,15 +289,15 @@ header p {
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 5px;
     margin-bottom: 8px;
 }
 
 .existing-doc-item.selected {
-    background: #e3f2fd;
-    border-color: #007bff;
+    background: var(--selected-bg);
+    border-color: var(--selected-border);
 }
 
 .existing-doc-info {
@@ -198,19 +312,21 @@ header p {
 .existing-doc-topics {
     margin-top: 5px;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 /* Questions Section */
 .questions-input textarea {
     width: 100%;
     padding: 15px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--border-primary);
     border-radius: 5px;
     font-family: inherit;
     font-size: 14px;
     resize: vertical;
     transition: border-color 0.3s ease;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .questions-input textarea:focus {
@@ -281,23 +397,24 @@ header p {
     margin-top: 15px;
     padding: 15px;
     border-radius: 5px;
-    background: #e9ecef;
+    background: var(--status-default-bg);
     font-weight: 500;
+    color: var(--text-primary);
 }
 
 .status-display.ready {
-    background: #d4edda;
-    color: #155724;
+    background: var(--status-ready-bg);
+    color: var(--status-ready-text);
 }
 
 .status-display.active {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: var(--status-active-bg);
+    color: var(--status-active-text);
 }
 
 .status-display.error {
-    background: #f8d7da;
-    color: #721c24;
+    background: var(--status-error-bg);
+    color: var(--status-error-text);
 }
 
 /* Chat Interface */
@@ -305,7 +422,7 @@ header p {
     height: 600px;
     display: flex;
     flex-direction: column;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-primary);
     border-radius: 10px;
     overflow: hidden;
 }
@@ -314,7 +431,7 @@ header p {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    background: #fafafa;
+    background: var(--bg-tertiary);
 }
 
 .message {
@@ -336,11 +453,11 @@ header p {
     padding: 15px;
     border-radius: 15px;
     position: relative;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 5px var(--shadow-secondary);
 }
 
 .message.shareholder .message-content {
-    background: #e3f2fd;
+    background: var(--selected-bg);
     border-bottom-left-radius: 5px;
 }
 
@@ -349,10 +466,14 @@ header p {
     border-bottom-right-radius: 5px;
 }
 
+[data-theme="dark"] .message.company .message-content {
+    background: #3a2a3f;
+}
+
 .message-header {
     font-weight: 600;
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -368,10 +489,11 @@ header p {
     border-radius: 4px;
     transition: background-color 0.2s ease;
     margin-left: 8px;
+    color: var(--text-primary);
 }
 
 .play-button:hover {
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--hover-bg);
 }
 
 .play-button:disabled {
@@ -386,18 +508,19 @@ header p {
 
 .message-text {
     line-height: 1.5;
+    color: var(--text-primary);
 }
 
 .message-time {
     font-size: 11px;
-    color: #999;
+    color: var(--text-muted);
     margin-top: 8px;
 }
 
 .chat-controls {
     padding: 15px;
-    background: white;
-    border-top: 1px solid #eee;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-secondary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -405,7 +528,7 @@ header p {
 
 .simulation-info {
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 #play-qa-sequence {
@@ -426,15 +549,16 @@ header p {
 
 .session-item {
     padding: 15px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-primary);
     border-radius: 5px;
     margin-bottom: 10px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    background: var(--bg-secondary);
 }
 
 .session-item:hover {
-    background: #f8f9fa;
+    background: var(--hover-bg);
 }
 
 .session-date {
@@ -444,7 +568,7 @@ header p {
 
 .session-stats {
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
     margin-top: 5px;
 }
 
@@ -463,17 +587,18 @@ header p {
 }
 
 .loading-spinner {
-    background: white;
+    background: var(--bg-secondary);
     padding: 30px;
     border-radius: 10px;
     text-align: center;
+    color: var(--text-primary);
 }
 
 .spinner {
     width: 40px;
     height: 40px;
     margin: 0 auto 20px;
-    border: 4px solid #f3f3f3;
+    border: 4px solid var(--border-primary);
     border-top: 4px solid #667eea;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -497,17 +622,18 @@ header p {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: var(--bg-secondary);
     margin: 15% auto;
     padding: 30px;
     border-radius: 10px;
     width: 80%;
     max-width: 500px;
     position: relative;
+    color: var(--text-primary);
 }
 
 .close {
-    color: #aaa;
+    color: var(--text-muted);
     float: right;
     font-size: 28px;
     font-weight: bold;
@@ -518,7 +644,7 @@ header p {
 }
 
 .close:hover {
-    color: black;
+    color: var(--text-primary);
 }
 
 /* Responsive Design */
@@ -555,11 +681,11 @@ header p {
 }
 
 .faq-description {
-    background-color: #f8f9fa;
+    background-color: var(--hover-bg);
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 20px;
-    color: #666;
+    color: var(--text-secondary);
     border-left: 4px solid #667eea;
 }
 
@@ -567,13 +693,13 @@ header p {
     overflow-x: auto;
     margin-bottom: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px var(--shadow-primary);
 }
 
 .faq-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
+    background: var(--bg-secondary);
     font-size: 14px;
 }
 
@@ -588,16 +714,17 @@ header p {
 
 .faq-table td {
     padding: 15px 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-secondary);
     vertical-align: top;
+    color: var(--text-primary);
 }
 
 .faq-table tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: var(--hover-bg);
 }
 
 .faq-table tbody tr.selected {
-    background-color: #e3f2fd;
+    background-color: var(--selected-bg);
 }
 
 .faq-checkbox {
@@ -615,7 +742,7 @@ header p {
 
 .faq-question {
     line-height: 1.5;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .faq-controls {
@@ -633,7 +760,7 @@ header p {
 .selected-count {
     text-align: center;
     padding: 10px;
-    background-color: #f8f9fa;
+    background-color: var(--hover-bg);
     border-radius: 6px;
     font-weight: 600;
     color: #667eea;
