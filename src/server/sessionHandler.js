@@ -46,7 +46,7 @@ function generateSessionExport(session) {
     const lines = [];
     
     lines.push('======================================');
-    lines.push('株主総会Q&Aシミュレーション セッションログ');
+    lines.push('株主総会想定問答シミュレーション セッションログ');
     lines.push('======================================');
     lines.push('');
     lines.push(`セッション ID: ${session.id}`);

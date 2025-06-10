@@ -1,6 +1,6 @@
-# Shareholder Meeting Q&A Simulation System
+# Shareholder Meeting Q&A Preparation System
 
-株主総会Q&Aシミュレーションシステム - AI-powered Q&A simulation system for shareholder meeting preparation
+株主総会想定問答シミュレーション - AI-powered Q&A simulation system for shareholder meeting preparation
 
 ## Overview
 
