@@ -90,7 +90,7 @@ app.use((req, res) => {
 // Start server only if not in test environment
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`Shareholder Meeting Q&A Simulator running on port ${port}`);
+    console.log(`Shareholder Meeting Q&A Preparation Simulation running on port ${port}`);
     console.log(`Access the application at http://localhost:${port}`);
   });
 }
