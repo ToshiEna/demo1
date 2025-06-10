@@ -16,6 +16,8 @@ function initializeApp() {
     setupFileUpload();
     loadSessions();
     updateSimulationStatus('まず IR資料をアップロードしてください');
+    initializeTheme();
+    setupSystemThemeListener();
 }
 
 function setupEventListeners() {
@@ -47,6 +49,9 @@ function setupEventListeners() {
     
     // Sequential Q&A playback
     document.getElementById('play-qa-sequence').addEventListener('click', playQASequence);
+    
+    // Dark mode toggle
+    document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
 }
 
 function setupFileUpload() {
@@ -1033,4 +1038,60 @@ function toggleFAQSection() {
         icon.classList.remove('expanded');
         icon.classList.add('collapsed');
     }
+}
+
+// Dark Mode Functions
+function toggleDarkMode() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    setTheme(newTheme);
+    saveThemePreference(newTheme);
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Update toggle button icon
+    const toggleButton = document.getElementById('dark-mode-toggle');
+    if (theme === 'dark') {
+        toggleButton.textContent = '☀️';
+        toggleButton.title = 'ライトモード切り替え';
+    } else {
+        toggleButton.textContent = '🌙';
+        toggleButton.title = 'ダークモード切り替え';
+    }
+}
+
+function saveThemePreference(theme) {
+    localStorage.setItem('preferred-theme', theme);
+}
+
+function loadThemePreference() {
+    const savedTheme = localStorage.getItem('preferred-theme');
+    
+    // If no preference saved, detect system preference
+    if (!savedTheme) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+    }
+    
+    return savedTheme;
+}
+
+// Initialize theme on page load
+function initializeTheme() {
+    const preferredTheme = loadThemePreference();
+    setTheme(preferredTheme);
+}
+
+// Listen for system color scheme changes
+function setupSystemThemeListener() {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', (e) => {
+        // Only update if no user preference is saved
+        if (!localStorage.getItem('preferred-theme')) {
+            setTheme(e.matches ? 'dark' : 'light');
+        }
+    });
 }
