@@ -15,9 +15,10 @@ function initializeApp() {
     setupEventListeners();
     setupFileUpload();
     loadSessions();
-    updateSimulationStatus('まず IR資料をアップロードしてください');
+    updateSimulationStatus(i18n.t('status.upload.required'));
     initializeTheme();
     setupSystemThemeListener();
+    initializeLanguage();
 }
 
 function setupEventListeners() {
@@ -52,6 +53,9 @@ function setupEventListeners() {
     
     // Dark mode toggle
     document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
+    
+    // Language selector
+    document.getElementById('language-selector').addEventListener('change', handleLanguageChange);
 }
 
 function setupFileUpload() {
@@ -322,7 +326,15 @@ async function regenerateFAQs() {
 
 function updateSelectedCount() {
     const selectedCount = generatedFAQs.filter(faq => faq.selected).length;
-    document.getElementById('selected-faq-count').textContent = selectedCount;
+    const countElement = document.getElementById('selected-faq-count');
+    countElement.setAttribute('data-count', selectedCount);
+    countElement.textContent = selectedCount;
+    
+    // Update the parent element that contains the full text
+    const parentElement = countElement.closest('[data-i18n="faq.selected.count"]');
+    if (parentElement) {
+        parentElement.textContent = i18n.t('faq.selected.count', { count: selectedCount });
+    }
 }
 
 function getSelectedFAQs() {
@@ -451,7 +463,9 @@ function updateChatMessages(messages) {
     
     // Update message count
     messageCount = messages.length;
-    document.getElementById('message-count').textContent = `メッセージ: ${messageCount}`;
+    const messageCountElement = document.getElementById('message-count');
+    messageCountElement.setAttribute('data-count', messageCount);
+    messageCountElement.textContent = i18n.t('chat.message.count', { count: messageCount });
     
     // Scroll to bottom
     chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -1056,10 +1070,13 @@ function setTheme(theme) {
     const toggleButton = document.getElementById('dark-mode-toggle');
     if (theme === 'dark') {
         toggleButton.textContent = '☀️';
-        toggleButton.title = 'ライトモード切り替え';
     } else {
         toggleButton.textContent = '🌙';
-        toggleButton.title = 'ダークモード切り替え';
+    }
+    
+    // Update theme labels with current language
+    if (typeof updateThemeLabels === 'function') {
+        updateThemeLabels();
     }
 }
 
@@ -1094,4 +1111,38 @@ function setupSystemThemeListener() {
             setTheme(e.matches ? 'dark' : 'light');
         }
     });
+}
+
+// Language Functions
+function initializeLanguage() {
+    // Initialize i18n and update UI
+    i18n.updateUI();
+    
+    // Update dynamic theme elements that need translation
+    updateThemeLabels();
+}
+
+function handleLanguageChange(event) {
+    const selectedLanguage = event.target.value;
+    i18n.setLanguage(selectedLanguage);
+    
+    // Update dynamic theme elements
+    updateThemeLabels();
+    
+    // Update status message
+    if (!uploadedDocuments.length) {
+        updateSimulationStatus(i18n.t('status.upload.required'));
+    }
+}
+
+function updateThemeLabels() {
+    // Update dark mode toggle title based on current theme and language
+    const toggleButton = document.getElementById('dark-mode-toggle');
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    
+    if (currentTheme === 'dark') {
+        toggleButton.title = i18n.getCurrentLanguage() === 'ja' ? 'ライトモード切り替え' : 'Switch to Light Mode';
+    } else {
+        toggleButton.title = i18n.getCurrentLanguage() === 'ja' ? 'ダークモード切り替え' : 'Switch to Dark Mode';
+    }
 }
